@@ -7,7472 +7,12141 @@
 //----------------------
 // ReSharper disable InconsistentNaming
 
-import { authToken, tenantId } from "../../../src/shared/api/config";
-import axios, {
-  AxiosError,
-  AxiosInstance,
-  AxiosRequestConfig,
-  AxiosResponse,
-  CancelToken,
-} from "axios";
+import { authToken } from "../../../src/shared/api/config";
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, CancelToken } from 'axios';
 
-import * as moment from "moment";
+import * as moment from 'moment';
 
 export class AuthorizedApiBase {
-  private readonly config: IConfig;
+    private readonly config: IConfig;
 
-  protected constructor(config: IConfig) {
-    this.config = config;
-  }
+    protected constructor(config: IConfig) {
+        this.config = config;
+    }
 
-  protected transformOptions = (options: RequestInit): Promise<RequestInit> => {
-    options.headers = {
-      ...options.headers,
-      Authorization: this.config.getAuthorization(),
-      TenantId: this.config.getTenantId(),
+    protected transformOptions = (options: RequestInit): Promise<RequestInit> => {
+        options.headers = {
+            ...options.headers,
+            Authorization: this.config.getAuthorization(),
+        };
+        return Promise.resolve(options);
     };
-    return Promise.resolve(options);
-  };
-  protected getBaseUrl(defaultUrl: string) {
-    return this.config.baseUrl();
-  }
-  protected transformResult(
-    url: string,
-    response: Response,
-    processor: (response: Response) => any
-  ) {
-    // TODO: Return own result or throw exception to change default processing behavior,
-    // or call processor function to run the default processing logic
-    let _headers: any = {};
-    const status = response.status;
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
+    protected getBaseUrl(defaultUrl: string) {
+        return this.config.baseUrl();
     }
-
-    console.log("Service call: " + url);
-    //return processor(response);
-    let message = "";
-    if (response.status == 200) {
-      return processor(response);
-    } else {
-      switch (response.status) {
-        case 400:
-          message = "bad request";
-          break;
-        case 401:
-          message = "unauthorized";
-          break;
-        case 403:
-          message = "forbidden";
-          break;
-        case 404:
-          message = "not found";
-          break;
-        case 500:
-          message = "server error";
-          break;
-        default:
-          break;
-      }
-      return throwException(message, status, null, null);
-    }
-  }
-}
-
-export class AddOnClient extends AuthorizedApiBase {
-  private instance: AxiosInstance;
-  private baseUrl: string;
-  protected jsonParseReviver:
-    | ((key: string, value: any) => any)
-    | undefined = undefined;
-
-  constructor(
-    configuration: IConfig,
-    baseUrl?: string,
-    instance?: AxiosInstance
-  ) {
-    super(configuration);
-    this.instance = instance ? instance : axios.create();
-    this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
-  }
-
-  getAddOn(
-    id?: string | null | undefined,
-    pageNumber?: number | undefined,
-    pageSize?: number | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<PagedResponseOfGetAddOnResponse>> {
-    let url_ = this.baseUrl + "/api/v1/addon?";
-    if (id !== undefined && id !== null)
-      url_ += "Id=" + encodeURIComponent("" + id) + "&";
-    if (pageNumber === null)
-      throw new Error("The parameter 'pageNumber' cannot be null.");
-    else if (pageNumber !== undefined)
-      url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
-    if (pageSize === null)
-      throw new Error("The parameter 'pageSize' cannot be null.");
-    else if (pageSize !== undefined)
-      url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
-        }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processGetAddOn(_response)
-        );
-      });
-  }
-
-  protected processGetAddOn(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<PagedResponseOfGetAddOnResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
-    }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = PagedResponseOfGetAddOnResponse.fromJS(resultData200);
-      return Promise.resolve<SwaggerResponse<PagedResponseOfGetAddOnResponse>>(
-        new SwaggerResponse<PagedResponseOfGetAddOnResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<SwaggerResponse<PagedResponseOfGetAddOnResponse>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
-
-  createAddOn(
-    createAddOnRequest: CreateAddOnRequest,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<ResponseOfCreateAddOnResponse>> {
-    let url_ = this.baseUrl + "/api/v1/addon";
-    url_ = url_.replace(/[?&]$/, "");
-
-    const content_ = JSON.stringify(createAddOnRequest);
-
-    let options_ = <AxiosRequestConfig>{
-      data: content_,
-      method: "POST",
-      url: url_,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
-        }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processCreateAddOn(_response)
-        );
-      });
-  }
-
-  protected processCreateAddOn(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<ResponseOfCreateAddOnResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
-    }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = ResponseOfCreateAddOnResponse.fromJS(resultData200);
-      return Promise.resolve<SwaggerResponse<ResponseOfCreateAddOnResponse>>(
-        new SwaggerResponse<ResponseOfCreateAddOnResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<SwaggerResponse<ResponseOfCreateAddOnResponse>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
-
-  updateAddOn(
-    updateAddOnRequest: UpdateAddOnRequest,
-    id: string,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<ResponseOfGetAddOnResponse>> {
-    let url_ = this.baseUrl + "/api/v1/addon/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
-
-    const content_ = JSON.stringify(updateAddOnRequest);
-
-    let options_ = <AxiosRequestConfig>{
-      data: content_,
-      method: "PUT",
-      url: url_,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
-        }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processUpdateAddOn(_response)
-        );
-      });
-  }
-
-  protected processUpdateAddOn(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<ResponseOfGetAddOnResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
-    }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = ResponseOfGetAddOnResponse.fromJS(resultData200);
-      return Promise.resolve<SwaggerResponse<ResponseOfGetAddOnResponse>>(
-        new SwaggerResponse<ResponseOfGetAddOnResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<SwaggerResponse<ResponseOfGetAddOnResponse>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
-}
-
-export class CategoryClient extends AuthorizedApiBase {
-  private instance: AxiosInstance;
-  private baseUrl: string;
-  protected jsonParseReviver:
-    | ((key: string, value: any) => any)
-    | undefined = undefined;
-
-  constructor(
-    configuration: IConfig,
-    baseUrl?: string,
-    instance?: AxiosInstance
-  ) {
-    super(configuration);
-    this.instance = instance ? instance : axios.create();
-    this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
-  }
-
-  getCategory(
-    name?: string | null | undefined,
-    pageNumber?: number | undefined,
-    pageSize?: number | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<PagedResponseOfGetCategoryContractResponse>> {
-    let url_ = this.baseUrl + "/api/v1/category?";
-    if (name !== undefined && name !== null)
-      url_ += "Name=" + encodeURIComponent("" + name) + "&";
-    if (pageNumber === null)
-      throw new Error("The parameter 'pageNumber' cannot be null.");
-    else if (pageNumber !== undefined)
-      url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
-    if (pageSize === null)
-      throw new Error("The parameter 'pageSize' cannot be null.");
-    else if (pageSize !== undefined)
-      url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
-        }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processGetCategory(_response)
-        );
-      });
-  }
-
-  protected processGetCategory(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<PagedResponseOfGetCategoryContractResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
-    }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = PagedResponseOfGetCategoryContractResponse.fromJS(
-        resultData200
-      );
-      return Promise.resolve<
-        SwaggerResponse<PagedResponseOfGetCategoryContractResponse>
-      >(
-        new SwaggerResponse<PagedResponseOfGetCategoryContractResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<
-      SwaggerResponse<PagedResponseOfGetCategoryContractResponse>
-    >(new SwaggerResponse(status, _headers, <any>null));
-  }
-
-  createCategory(
-    id?: string | null | undefined,
-    name?: string | null | undefined,
-    shortDescription?: string | null | undefined,
-    longDescription?: string | null | undefined,
-    imagePath?: string | null | undefined,
-    restaurantId?: string | null | undefined,
-    isEnable?: boolean | null | undefined,
-    displayOrder?: number | null | undefined,
-    deleteAt?: moment.Moment | null | undefined,
-    availableFrom?: moment.Moment | null | undefined,
-    availableTo?: moment.Moment | null | undefined,
-    image_CanRead?: boolean | undefined,
-    image_CanSeek?: boolean | undefined,
-    image_CanWrite?: boolean | undefined,
-    image_Capacity?: number | undefined,
-    image_Length?: number | undefined,
-    image_Position?: number | undefined,
-    image_CanTimeout?: boolean | undefined,
-    image_ReadTimeout?: number | undefined,
-    image_WriteTimeout?: number | undefined,
-    portionIds?: number[] | null | undefined,
-    categoryAvailabilityModels?: CategoryAvailabilityModel[] | null | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<PagedResponseOfGetCategoryContractResponse>> {
-    let url_ = this.baseUrl + "/api/v1/category?";
-    if (id !== undefined && id !== null)
-      url_ += "Id=" + encodeURIComponent("" + id) + "&";
-    if (name !== undefined && name !== null)
-      url_ += "Name=" + encodeURIComponent("" + name) + "&";
-    if (shortDescription !== undefined && shortDescription !== null)
-      url_ +=
-        "ShortDescription=" + encodeURIComponent("" + shortDescription) + "&";
-    if (longDescription !== undefined && longDescription !== null)
-      url_ +=
-        "LongDescription=" + encodeURIComponent("" + longDescription) + "&";
-    if (imagePath !== undefined && imagePath !== null)
-      url_ += "ImagePath=" + encodeURIComponent("" + imagePath) + "&";
-    if (restaurantId !== undefined && restaurantId !== null)
-      url_ += "RestaurantId=" + encodeURIComponent("" + restaurantId) + "&";
-    if (isEnable !== undefined && isEnable !== null)
-      url_ += "IsEnable=" + encodeURIComponent("" + isEnable) + "&";
-    if (displayOrder !== undefined && displayOrder !== null)
-      url_ += "DisplayOrder=" + encodeURIComponent("" + displayOrder) + "&";
-    if (deleteAt !== undefined && deleteAt !== null)
-      url_ +=
-        "DeleteAt=" +
-        encodeURIComponent(deleteAt ? "" + deleteAt.toJSON() : "") +
-        "&";
-    if (availableFrom !== undefined && availableFrom !== null)
-      url_ +=
-        "AvailableFrom=" +
-        encodeURIComponent(availableFrom ? "" + availableFrom.toJSON() : "") +
-        "&";
-    if (availableTo !== undefined && availableTo !== null)
-      url_ +=
-        "AvailableTo=" +
-        encodeURIComponent(availableTo ? "" + availableTo.toJSON() : "") +
-        "&";
-    if (image_CanRead === null)
-      throw new Error("The parameter 'image_CanRead' cannot be null.");
-    else if (image_CanRead !== undefined)
-      url_ += "Image.CanRead=" + encodeURIComponent("" + image_CanRead) + "&";
-    if (image_CanSeek === null)
-      throw new Error("The parameter 'image_CanSeek' cannot be null.");
-    else if (image_CanSeek !== undefined)
-      url_ += "Image.CanSeek=" + encodeURIComponent("" + image_CanSeek) + "&";
-    if (image_CanWrite === null)
-      throw new Error("The parameter 'image_CanWrite' cannot be null.");
-    else if (image_CanWrite !== undefined)
-      url_ += "Image.CanWrite=" + encodeURIComponent("" + image_CanWrite) + "&";
-    if (image_Capacity === null)
-      throw new Error("The parameter 'image_Capacity' cannot be null.");
-    else if (image_Capacity !== undefined)
-      url_ += "Image.Capacity=" + encodeURIComponent("" + image_Capacity) + "&";
-    if (image_Length === null)
-      throw new Error("The parameter 'image_Length' cannot be null.");
-    else if (image_Length !== undefined)
-      url_ += "Image.Length=" + encodeURIComponent("" + image_Length) + "&";
-    if (image_Position === null)
-      throw new Error("The parameter 'image_Position' cannot be null.");
-    else if (image_Position !== undefined)
-      url_ += "Image.Position=" + encodeURIComponent("" + image_Position) + "&";
-    if (image_CanTimeout === null)
-      throw new Error("The parameter 'image_CanTimeout' cannot be null.");
-    else if (image_CanTimeout !== undefined)
-      url_ +=
-        "Image.CanTimeout=" + encodeURIComponent("" + image_CanTimeout) + "&";
-    if (image_ReadTimeout === null)
-      throw new Error("The parameter 'image_ReadTimeout' cannot be null.");
-    else if (image_ReadTimeout !== undefined)
-      url_ +=
-        "Image.ReadTimeout=" + encodeURIComponent("" + image_ReadTimeout) + "&";
-    if (image_WriteTimeout === null)
-      throw new Error("The parameter 'image_WriteTimeout' cannot be null.");
-    else if (image_WriteTimeout !== undefined)
-      url_ +=
-        "Image.WriteTimeout=" +
-        encodeURIComponent("" + image_WriteTimeout) +
-        "&";
-    if (portionIds !== undefined && portionIds !== null)
-      portionIds &&
-        portionIds.forEach((item) => {
-          url_ += "PortionIds=" + encodeURIComponent("" + item) + "&";
-        });
-    if (
-      categoryAvailabilityModels !== undefined &&
-      categoryAvailabilityModels !== null
-    )
-      categoryAvailabilityModels &&
-        categoryAvailabilityModels.forEach((item, index) => {
-          for (let attr in item)
-            if (item.hasOwnProperty(attr)) {
-              url_ +=
-                "CategoryAvailabilityModels[" +
-                index +
-                "]." +
-                attr +
-                "=" +
-                encodeURIComponent("" + (<any>item)[attr]) +
-                "&";
+    protected transformResult(url: string, response: Response, processor: (response: Response) => any) {
+        // TODO: Return own result or throw exception to change default processing behavior, 
+        // or call processor function to run the default processing logic
+        let _headers: any = {};
+        const status = response.status;
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
             }
-        });
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "POST",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
+        }
+        let message = "";
+        if (response.status == 200) {
+            return processor(response);
         } else {
-          throw _error;
-        }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processCreateCategory(_response)
-        );
-      });
-  }
-
-  protected processCreateCategory(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<PagedResponseOfGetCategoryContractResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
-    }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = PagedResponseOfGetCategoryContractResponse.fromJS(
-        resultData200
-      );
-      return Promise.resolve<
-        SwaggerResponse<PagedResponseOfGetCategoryContractResponse>
-      >(
-        new SwaggerResponse<PagedResponseOfGetCategoryContractResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<
-      SwaggerResponse<PagedResponseOfGetCategoryContractResponse>
-    >(new SwaggerResponse(status, _headers, <any>null));
-  }
-
-  updateCategory(
-    id?: string | null | undefined,
-    name?: string | null | undefined,
-    shortDescription?: string | null | undefined,
-    longDescription?: string | null | undefined,
-    imagePath?: string | null | undefined,
-    restaurantId?: string | null | undefined,
-    isEnable?: boolean | null | undefined,
-    displayOrder?: number | null | undefined,
-    deleteAt?: moment.Moment | null | undefined,
-    availableFrom?: moment.Moment | null | undefined,
-    availableTo?: moment.Moment | null | undefined,
-    image_CanRead?: boolean | undefined,
-    image_CanSeek?: boolean | undefined,
-    image_CanWrite?: boolean | undefined,
-    image_Capacity?: number | undefined,
-    image_Length?: number | undefined,
-    image_Position?: number | undefined,
-    image_CanTimeout?: boolean | undefined,
-    image_ReadTimeout?: number | undefined,
-    image_WriteTimeout?: number | undefined,
-    portionIds?: number[] | null | undefined,
-    categoryAvailabilityModels?: CategoryAvailabilityModel[] | null | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<PagedResponseOfGetCategoryContractResponse>> {
-    let url_ = this.baseUrl + "/api/v1/category/{id}?";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    if (id !== undefined && id !== null)
-      url_ += "Id=" + encodeURIComponent("" + id) + "&";
-    if (name !== undefined && name !== null)
-      url_ += "Name=" + encodeURIComponent("" + name) + "&";
-    if (shortDescription !== undefined && shortDescription !== null)
-      url_ +=
-        "ShortDescription=" + encodeURIComponent("" + shortDescription) + "&";
-    if (longDescription !== undefined && longDescription !== null)
-      url_ +=
-        "LongDescription=" + encodeURIComponent("" + longDescription) + "&";
-    if (imagePath !== undefined && imagePath !== null)
-      url_ += "ImagePath=" + encodeURIComponent("" + imagePath) + "&";
-    if (restaurantId !== undefined && restaurantId !== null)
-      url_ += "RestaurantId=" + encodeURIComponent("" + restaurantId) + "&";
-    if (isEnable !== undefined && isEnable !== null)
-      url_ += "isEnable=" + encodeURIComponent("" + isEnable) + "&";
-    if (displayOrder !== undefined && displayOrder !== null)
-      url_ += "DisplayOrder=" + encodeURIComponent("" + displayOrder) + "&";
-    if (deleteAt !== undefined && deleteAt !== null)
-      url_ +=
-        "DeleteAt=" +
-        encodeURIComponent(deleteAt ? "" + deleteAt.toJSON() : "") +
-        "&";
-    if (availableFrom !== undefined && availableFrom !== null)
-      url_ +=
-        "AvailableFrom=" +
-        encodeURIComponent(availableFrom ? "" + availableFrom.toJSON() : "") +
-        "&";
-    if (availableTo !== undefined && availableTo !== null)
-      url_ +=
-        "AvailableTo=" +
-        encodeURIComponent(availableTo ? "" + availableTo.toJSON() : "") +
-        "&";
-    if (image_CanRead === null)
-      throw new Error("The parameter 'image_CanRead' cannot be null.");
-    else if (image_CanRead !== undefined)
-      url_ += "Image.CanRead=" + encodeURIComponent("" + image_CanRead) + "&";
-    if (image_CanSeek === null)
-      throw new Error("The parameter 'image_CanSeek' cannot be null.");
-    else if (image_CanSeek !== undefined)
-      url_ += "Image.CanSeek=" + encodeURIComponent("" + image_CanSeek) + "&";
-    if (image_CanWrite === null)
-      throw new Error("The parameter 'image_CanWrite' cannot be null.");
-    else if (image_CanWrite !== undefined)
-      url_ += "Image.CanWrite=" + encodeURIComponent("" + image_CanWrite) + "&";
-    if (image_Capacity === null)
-      throw new Error("The parameter 'image_Capacity' cannot be null.");
-    else if (image_Capacity !== undefined)
-      url_ += "Image.Capacity=" + encodeURIComponent("" + image_Capacity) + "&";
-    if (image_Length === null)
-      throw new Error("The parameter 'image_Length' cannot be null.");
-    else if (image_Length !== undefined)
-      url_ += "Image.Length=" + encodeURIComponent("" + image_Length) + "&";
-    if (image_Position === null)
-      throw new Error("The parameter 'image_Position' cannot be null.");
-    else if (image_Position !== undefined)
-      url_ += "Image.Position=" + encodeURIComponent("" + image_Position) + "&";
-    if (image_CanTimeout === null)
-      throw new Error("The parameter 'image_CanTimeout' cannot be null.");
-    else if (image_CanTimeout !== undefined)
-      url_ +=
-        "Image.CanTimeout=" + encodeURIComponent("" + image_CanTimeout) + "&";
-    if (image_ReadTimeout === null)
-      throw new Error("The parameter 'image_ReadTimeout' cannot be null.");
-    else if (image_ReadTimeout !== undefined)
-      url_ +=
-        "Image.ReadTimeout=" + encodeURIComponent("" + image_ReadTimeout) + "&";
-    if (image_WriteTimeout === null)
-      throw new Error("The parameter 'image_WriteTimeout' cannot be null.");
-    else if (image_WriteTimeout !== undefined)
-      url_ +=
-        "Image.WriteTimeout=" +
-        encodeURIComponent("" + image_WriteTimeout) +
-        "&";
-    if (portionIds !== undefined && portionIds !== null)
-      portionIds &&
-        portionIds.forEach((item) => {
-          url_ += "PortionIds=" + encodeURIComponent("" + item) + "&";
-        });
-    if (
-      categoryAvailabilityModels !== undefined &&
-      categoryAvailabilityModels !== null
-    )
-      categoryAvailabilityModels &&
-        categoryAvailabilityModels.forEach((item, index) => {
-          for (let attr in item)
-            if (item.hasOwnProperty(attr)) {
-              url_ +=
-                "categoryAvailabilityModels[" +
-                index +
-                "]." +
-                attr +
-                "=" +
-                encodeURIComponent("" + (<any>item)[attr]) +
-                "&";
+            switch (response.status) {
+                case 400:
+                    message = "bad request";
+                    break;
+                case 401:
+                    message = "unauthorized";
+                    break;
+                case 403:
+                    message = "forbidden";
+                    break;
+                case 404:
+                    message = "not found";
+                    break;
+                case 500:
+                    message = "server error";
+                    break;
+                case 412:
+                    message = response?.data?.errors[0].error;
+                default:
+                    break;
             }
-        });
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "PUT",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+            return throwException(message, status, null, null);
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processUpdateCategory(_response)
-        );
-      });
-  }
 
-  protected processUpdateCategory(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<PagedResponseOfGetCategoryContractResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
+        //if(response.status == 200){
+        //    return processor(response); 
+        //}else if(response.status == 400){
+        //    const _responseText = response.data;
+        //    let result400: any = null;
+        //    let resultData400  = _responseText;
+        //    result400 = ErrorResponse.fromJS(resultData400);
+        //    return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        //}else{
+        //    const _responseText = response.data;
+        //    return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        //}
+        //console.log("Service call: " + url);
+        //return processor(response); 
     }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = PagedResponseOfGetCategoryContractResponse.fromJS(
-        resultData200
-      );
-      return Promise.resolve<
-        SwaggerResponse<PagedResponseOfGetCategoryContractResponse>
-      >(
-        new SwaggerResponse<PagedResponseOfGetCategoryContractResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<
-      SwaggerResponse<PagedResponseOfGetCategoryContractResponse>
-    >(new SwaggerResponse(status, _headers, <any>null));
-  }
-}
-
-export class CustomerClient extends AuthorizedApiBase {
-  private instance: AxiosInstance;
-  private baseUrl: string;
-  protected jsonParseReviver:
-    | ((key: string, value: any) => any)
-    | undefined = undefined;
-
-  constructor(
-    configuration: IConfig,
-    baseUrl?: string,
-    instance?: AxiosInstance
-  ) {
-    super(configuration);
-    this.instance = instance ? instance : axios.create();
-    this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
-  }
-
-  getCustomers(
-    id?: string | null | undefined,
-    pageNumber?: number | undefined,
-    pageSize?: number | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<ResponseOfGetCustomerResponse>> {
-    let url_ = this.baseUrl + "/api/v1/customer?";
-    if (id !== undefined && id !== null)
-      url_ += "Id=" + encodeURIComponent("" + id) + "&";
-    if (pageNumber === null)
-      throw new Error("The parameter 'pageNumber' cannot be null.");
-    else if (pageNumber !== undefined)
-      url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
-    if (pageSize === null)
-      throw new Error("The parameter 'pageSize' cannot be null.");
-    else if (pageSize !== undefined)
-      url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
-        }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processGetCustomers(_response)
-        );
-      });
-  }
-
-  protected processGetCustomers(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<ResponseOfGetCustomerResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
-    }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = ResponseOfGetCustomerResponse.fromJS(resultData200);
-      return Promise.resolve<SwaggerResponse<ResponseOfGetCustomerResponse>>(
-        new SwaggerResponse<ResponseOfGetCustomerResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<SwaggerResponse<ResponseOfGetCustomerResponse>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
-}
-
-export class DriverClient extends AuthorizedApiBase {
-  private instance: AxiosInstance;
-  private baseUrl: string;
-  protected jsonParseReviver:
-    | ((key: string, value: any) => any)
-    | undefined = undefined;
-
-  constructor(
-    configuration: IConfig,
-    baseUrl?: string,
-    instance?: AxiosInstance
-  ) {
-    super(configuration);
-    this.instance = instance ? instance : axios.create();
-    this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
-  }
-
-  getDrivers(
-    id?: number | undefined,
-    pageNumber?: number | undefined,
-    pageSize?: number | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<ResponseOfGetDriverContractResponse>> {
-    let url_ = this.baseUrl + "/api/v1/drivers?";
-    if (id === null) throw new Error("The parameter 'id' cannot be null.");
-    else if (id !== undefined)
-      url_ += "Id=" + encodeURIComponent("" + id) + "&";
-    if (pageNumber === null)
-      throw new Error("The parameter 'pageNumber' cannot be null.");
-    else if (pageNumber !== undefined)
-      url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
-    if (pageSize === null)
-      throw new Error("The parameter 'pageSize' cannot be null.");
-    else if (pageSize !== undefined)
-      url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
-        }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processGetDrivers(_response)
-        );
-      });
-  }
-
-  protected processGetDrivers(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<ResponseOfGetDriverContractResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
-    }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = ResponseOfGetDriverContractResponse.fromJS(resultData200);
-      return Promise.resolve<
-        SwaggerResponse<ResponseOfGetDriverContractResponse>
-      >(
-        new SwaggerResponse<ResponseOfGetDriverContractResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<
-      SwaggerResponse<ResponseOfGetDriverContractResponse>
-    >(new SwaggerResponse(status, _headers, <any>null));
-  }
-
-  createDriver(
-    createDriverContractRequest?:
-      | CreateDriverContractRequest
-      | null
-      | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<ResponseOfCreateDriverContractRequest>> {
-    let url_ = this.baseUrl + "/api/v1/drivers?";
-    if (
-      createDriverContractRequest !== undefined &&
-      createDriverContractRequest !== null
-    )
-      url_ +=
-        "createDriverContractRequest=" +
-        encodeURIComponent("" + createDriverContractRequest) +
-        "&";
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "POST",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
-        }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processCreateDriver(_response)
-        );
-      });
-  }
-
-  protected processCreateDriver(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<ResponseOfCreateDriverContractRequest>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
-    }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = ResponseOfCreateDriverContractRequest.fromJS(resultData200);
-      return Promise.resolve<
-        SwaggerResponse<ResponseOfCreateDriverContractRequest>
-      >(
-        new SwaggerResponse<ResponseOfCreateDriverContractRequest>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<
-      SwaggerResponse<ResponseOfCreateDriverContractRequest>
-    >(new SwaggerResponse(status, _headers, <any>null));
-  }
-
-  updateDriver(
-    id: string,
-    updateDriverContractRequest?:
-      | UpdateDriverContractRequest
-      | null
-      | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<ResponseOfUpdateDriverContractResponse>> {
-    let url_ = this.baseUrl + "/api/v1/drivers/{id}?";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    if (
-      updateDriverContractRequest !== undefined &&
-      updateDriverContractRequest !== null
-    )
-      url_ +=
-        "updateDriverContractRequest=" +
-        encodeURIComponent("" + updateDriverContractRequest) +
-        "&";
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "PUT",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
-        }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processUpdateDriver(_response)
-        );
-      });
-  }
-
-  protected processUpdateDriver(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<ResponseOfUpdateDriverContractResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
-        }
-      }
-    }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = ResponseOfUpdateDriverContractResponse.fromJS(resultData200);
-      return Promise.resolve<
-        SwaggerResponse<ResponseOfUpdateDriverContractResponse>
-      >(
-        new SwaggerResponse<ResponseOfUpdateDriverContractResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<
-      SwaggerResponse<ResponseOfUpdateDriverContractResponse>
-    >(new SwaggerResponse(status, _headers, <any>null));
-  }
 }
 
 export class FileClient extends AuthorizedApiBase {
-  private instance: AxiosInstance;
-  private baseUrl: string;
-  protected jsonParseReviver:
-    | ((key: string, value: any) => any)
-    | undefined = undefined;
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
 
-  constructor(
-    configuration: IConfig,
-    baseUrl?: string,
-    instance?: AxiosInstance
-  ) {
-    super(configuration);
-    this.instance = instance ? instance : axios.create();
-    this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
-  }
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
+    }
 
-  viewImage(
-    id: string | null,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    let url_ = this.baseUrl + "/api/v1/File/viewImage/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
+    storeCategoryImage(id: string | null , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<FileResponse | null>> {
+        let url_ = this.baseUrl + "/api/File/storecategoryimage/{id}";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
 
-    let options_ = <AxiosRequestConfig>{
-      responseType: "blob",
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/octet-stream",
-      },
-      cancelToken,
-    };
+        let options_ = <AxiosRequestConfig>{
+            responseType: "blob",
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/octet-stream"
+            },
+            cancelToken
+        };
 
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processStoreCategoryImage(_response));
+        });
+    }
+
+    protected processStoreCategoryImage(response: AxiosResponse): Promise<SwaggerResponse<FileResponse | null>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processViewImage(_response)
-        );
-      });
-  }
-
-  protected processViewImage(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers["content-disposition"] : undefined;
+            const fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+            const fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            return Promise.resolve<SwaggerResponse<FileResponse | null>>(new SwaggerResponse(status, _headers, { fileName: fileName, status: status, data: new Blob([response.data]), headers: _headers }));
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<FileResponse | null>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200 || status === 206) {
-      const contentDisposition = response.headers
-        ? response.headers["content-disposition"]
-        : undefined;
-      const fileNameMatch = contentDisposition
-        ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition)
-        : undefined;
-      const fileName =
-        fileNameMatch && fileNameMatch.length > 1
-          ? fileNameMatch[1]
-          : undefined;
-      return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-        new SwaggerResponse(status, _headers, {
-          fileName: fileName,
-          status: status,
-          data: new Blob([response.data]),
-          headers: _headers,
-        })
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    storeLogo(id: string | null , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<FileResponse | null>> {
+        let url_ = this.baseUrl + "/api/File/storelogo/{id}";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            responseType: "blob",
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/octet-stream"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processStoreLogo(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  admin(
-    id: string | null,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    let url_ = this.baseUrl + "/api/v1/File/Admin/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      responseType: "blob",
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/octet-stream",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processStoreLogo(response: AxiosResponse): Promise<SwaggerResponse<FileResponse | null>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processAdmin(_response)
-        );
-      });
-  }
-
-  protected processAdmin(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers["content-disposition"] : undefined;
+            const fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+            const fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            return Promise.resolve<SwaggerResponse<FileResponse | null>>(new SwaggerResponse(status, _headers, { fileName: fileName, status: status, data: new Blob([response.data]), headers: _headers }));
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<FileResponse | null>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200 || status === 206) {
-      const contentDisposition = response.headers
-        ? response.headers["content-disposition"]
-        : undefined;
-      const fileNameMatch = contentDisposition
-        ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition)
-        : undefined;
-      const fileName =
-        fileNameMatch && fileNameMatch.length > 1
-          ? fileNameMatch[1]
-          : undefined;
-      return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-        new SwaggerResponse(status, _headers, {
-          fileName: fileName,
-          status: status,
-          data: new Blob([response.data]),
-          headers: _headers,
-        })
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+}
+
+export class DealClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
     }
-    return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  category(
-    id: string | null,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    let url_ = this.baseUrl + "/api/v1/File/Category/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
+    getAll(dealType?: DealTypesApi | undefined, order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfGetAllDealsApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Deal/GetAll?";
+        if (dealType === null)
+            throw new Error("The parameter 'dealType' cannot be null.");
+        else if (dealType !== undefined)
+            url_ += "DealType=" + encodeURIComponent("" + dealType) + "&";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
 
-    let options_ = <AxiosRequestConfig>{
-      responseType: "blob",
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/octet-stream",
-      },
-      cancelToken,
-    };
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
 
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGetAll(_response));
+        });
+    }
+
+    protected processGetAll(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfGetAllDealsApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processCategory(_response)
-        );
-      });
-  }
-
-  protected processCategory(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfGetAllDealsApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfGetAllDealsApiResponse>>(new SwaggerResponse<PagedResponseOfGetAllDealsApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfGetAllDealsApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200 || status === 206) {
-      const contentDisposition = response.headers
-        ? response.headers["content-disposition"]
-        : undefined;
-      const fileNameMatch = contentDisposition
-        ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition)
-        : undefined;
-      const fileName =
-        fileNameMatch && fileNameMatch.length > 1
-          ? fileNameMatch[1]
-          : undefined;
-      return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-        new SwaggerResponse(status, _headers, {
-          fileName: fileName,
-          status: status,
-          data: new Blob([response.data]),
-          headers: _headers,
-        })
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    search(dealSearchType?: DealSearchType | undefined, searchText?: string | null | undefined, order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfSearchDealsApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Deal/Search?";
+        if (dealSearchType === null)
+            throw new Error("The parameter 'dealSearchType' cannot be null.");
+        else if (dealSearchType !== undefined)
+            url_ += "DealSearchType=" + encodeURIComponent("" + dealSearchType) + "&";
+        if (searchText !== undefined && searchText !== null)
+            url_ += "SearchText=" + encodeURIComponent("" + searchText) + "&";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processSearch(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  product(
-    id: string | null,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    let url_ = this.baseUrl + "/api/v1/File/Product/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      responseType: "blob",
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/octet-stream",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processSearch(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfSearchDealsApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processProduct(_response)
-        );
-      });
-  }
-
-  protected processProduct(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfSearchDealsApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfSearchDealsApiResponse>>(new SwaggerResponse<PagedResponseOfSearchDealsApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfSearchDealsApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200 || status === 206) {
-      const contentDisposition = response.headers
-        ? response.headers["content-disposition"]
-        : undefined;
-      const fileNameMatch = contentDisposition
-        ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition)
-        : undefined;
-      const fileName =
-        fileNameMatch && fileNameMatch.length > 1
-          ? fileNameMatch[1]
-          : undefined;
-      return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-        new SwaggerResponse(status, _headers, {
-          fileName: fileName,
-          status: status,
-          data: new Blob([response.data]),
-          headers: _headers,
-        })
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+}
+
+export class ImageClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
     }
-    return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  gallery(
-    id: string | null,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    let url_ = this.baseUrl + "/api/v1/File/Gallery/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
+    createImage(contentType?: string | null | undefined, contentDisposition?: string | null | undefined, headers?: IHeaderDictionary | null | undefined, length?: number | undefined, name?: string | null | undefined, fileName?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfImageCreateAPIResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Create";
+        url_ = url_.replace(/[?&]$/, "");
 
-    let options_ = <AxiosRequestConfig>{
-      responseType: "blob",
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/octet-stream",
-      },
-      cancelToken,
-    };
+        const content_ = new FormData();
+        if (contentType !== null && contentType !== undefined)
+            content_.append("ContentType", contentType.toString());
+        if (contentDisposition !== null && contentDisposition !== undefined)
+            content_.append("ContentDisposition", contentDisposition.toString());
+        if (headers !== null && headers !== undefined)
+            content_.append("Headers", headers.toString());
+        if (length === null || length === undefined)
+            throw new Error("The parameter 'length' cannot be null.");
+        else
+            content_.append("Length", length.toString());
+        if (name !== null && name !== undefined)
+            content_.append("Name", name.toString());
+        if (fileName !== null && fileName !== undefined)
+            content_.append("FileName", fileName.toString());
 
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+        let options_ = <AxiosRequestConfig>{
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processCreateImage(_response));
+        });
+    }
+
+    protected processCreateImage(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfImageCreateAPIResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processGallery(_response)
-        );
-      });
-  }
-
-  protected processGallery(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfImageCreateAPIResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfImageCreateAPIResponse>>(new SwaggerResponse<PagedResponseOfImageCreateAPIResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfImageCreateAPIResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200 || status === 206) {
-      const contentDisposition = response.headers
-        ? response.headers["content-disposition"]
-        : undefined;
-      const fileNameMatch = contentDisposition
-        ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition)
-        : undefined;
-      const fileName =
-        fileNameMatch && fileNameMatch.length > 1
-          ? fileNameMatch[1]
-          : undefined;
-      return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-        new SwaggerResponse(status, _headers, {
-          fileName: fileName,
-          status: status,
-          data: new Blob([response.data]),
-          headers: _headers,
-        })
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+}
+
+export class ItemClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
     }
-    return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  default(
-    id: string | null,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    let url_ = this.baseUrl + "/api/v1/File/Default/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
+    get(storeId?: string | null | undefined, order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfItemGetApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Item/GetAll?";
+        if (storeId !== undefined && storeId !== null)
+            url_ += "StoreId=" + encodeURIComponent("" + storeId) + "&";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
 
-    let options_ = <AxiosRequestConfig>{
-      responseType: "blob",
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/octet-stream",
-      },
-      cancelToken,
-    };
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
 
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGet(_response));
+        });
+    }
+
+    protected processGet(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfItemGetApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processDefault(_response)
-        );
-      });
-  }
-
-  protected processDefault(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfItemGetApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfItemGetApiResponse>>(new SwaggerResponse<PagedResponseOfItemGetApiResponse>(status, _headers, result200));
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfItemGetApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200 || status === 206) {
-      const contentDisposition = response.headers
-        ? response.headers["content-disposition"]
-        : undefined;
-      const fileNameMatch = contentDisposition
-        ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition)
-        : undefined;
-      const fileName =
-        fileNameMatch && fileNameMatch.length > 1
-          ? fileNameMatch[1]
-          : undefined;
-      return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-        new SwaggerResponse(status, _headers, {
-          fileName: fileName,
-          status: status,
-          data: new Blob([response.data]),
-          headers: _headers,
-        })
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+}
+
+export class MessageClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
     }
-    return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  users(
-    id: string | null,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    let url_ = this.baseUrl + "/api/v1/File/Users/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
+    getAll(order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfGetAllMessageApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/GetAll?";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
 
-    let options_ = <AxiosRequestConfig>{
-      responseType: "blob",
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/octet-stream",
-      },
-      cancelToken,
-    };
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
 
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGetAll(_response));
+        });
+    }
+
+    protected processGetAll(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfGetAllMessageApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processUsers(_response)
-        );
-      });
-  }
-
-  protected processUsers(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfGetAllMessageApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfGetAllMessageApiResponse>>(new SwaggerResponse<PagedResponseOfGetAllMessageApiResponse>(status, _headers, result200));
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfGetAllMessageApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200 || status === 206) {
-      const contentDisposition = response.headers
-        ? response.headers["content-disposition"]
-        : undefined;
-      const fileNameMatch = contentDisposition
-        ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition)
-        : undefined;
-      const fileName =
-        fileNameMatch && fileNameMatch.length > 1
-          ? fileNameMatch[1]
-          : undefined;
-      return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-        new SwaggerResponse(status, _headers, {
-          fileName: fileName,
-          status: status,
-          data: new Blob([response.data]),
-          headers: _headers,
-        })
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    delete(query: DeleteMessageApiRequest , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfDeleteMessageApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Delete";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(query);
+
+        let options_ = <AxiosRequestConfig>{
+            data: content_,
+            method: "DELETE",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processDelete(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  driver(
-    id: string | null,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    let url_ = this.baseUrl + "/api/v1/File/Driver/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      responseType: "blob",
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/octet-stream",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processDelete(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfDeleteMessageApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processDriver(_response)
-        );
-      });
-  }
-
-  protected processDriver(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<FileResponse | null>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfDeleteMessageApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfDeleteMessageApiResponse>>(new SwaggerResponse<ResponseOfDeleteMessageApiResponse>(status, _headers, result200));
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<ResponseOfDeleteMessageApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200 || status === 206) {
-      const contentDisposition = response.headers
-        ? response.headers["content-disposition"]
-        : undefined;
-      const fileNameMatch = contentDisposition
-        ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition)
-        : undefined;
-      const fileName =
-        fileNameMatch && fileNameMatch.length > 1
-          ? fileNameMatch[1]
-          : undefined;
-      return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-        new SwaggerResponse(status, _headers, {
-          fileName: fileName,
-          status: status,
-          data: new Blob([response.data]),
-          headers: _headers,
-        })
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
-    }
-    return Promise.resolve<SwaggerResponse<FileResponse | null>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 }
 
-export class OrdersClient extends AuthorizedApiBase {
-  private instance: AxiosInstance;
-  private baseUrl: string;
-  protected jsonParseReviver:
-    | ((key: string, value: any) => any)
-    | undefined = undefined;
+export class OrderClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
 
-  constructor(
-    configuration: IConfig,
-    baseUrl?: string,
-    instance?: AxiosInstance
-  ) {
-    super(configuration);
-    this.instance = instance ? instance : axios.create();
-    this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
-  }
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
+    }
 
-  getOrders(
-    driverId?: string | null | undefined,
-    orderTypeId?: string | null | undefined,
-    isDriver?: boolean | undefined,
-    pageNumber?: number | undefined,
-    pageSize?: number | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<ResponseOfListOfGetOrderContractResponse>> {
-    let url_ = this.baseUrl + "/api/v1/order?";
-    if (driverId !== undefined && driverId !== null)
-      url_ += "DriverId=" + encodeURIComponent("" + driverId) + "&";
-    if (orderTypeId !== undefined && orderTypeId !== null)
-      url_ += "OrderTypeId=" + encodeURIComponent("" + orderTypeId) + "&";
-    if (isDriver === null)
-      throw new Error("The parameter 'isDriver' cannot be null.");
-    else if (isDriver !== undefined)
-      url_ += "IsDriver=" + encodeURIComponent("" + isDriver) + "&";
-    if (pageNumber === null)
-      throw new Error("The parameter 'pageNumber' cannot be null.");
-    else if (pageNumber !== undefined)
-      url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
-    if (pageSize === null)
-      throw new Error("The parameter 'pageSize' cannot be null.");
-    else if (pageSize !== undefined)
-      url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
-    url_ = url_.replace(/[?&]$/, "");
+    createByShoppingCart(createOrderByShoppingCartApiRequest: CreateOrderByShoppingCartApiRequest , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfCreateOrderByShoppingCartApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Order/CreateByCart";
+        url_ = url_.replace(/[?&]$/, "");
 
-    let options_ = <AxiosRequestConfig>{
-      method: "GET",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
+        const content_ = JSON.stringify(createOrderByShoppingCartApiRequest);
 
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+        let options_ = <AxiosRequestConfig>{
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processCreateByShoppingCart(_response));
+        });
+    }
+
+    protected processCreateByShoppingCart(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfCreateOrderByShoppingCartApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processGetOrders(_response)
-        );
-      });
-  }
-
-  protected processGetOrders(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<ResponseOfListOfGetOrderContractResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfCreateOrderByShoppingCartApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfCreateOrderByShoppingCartApiResponse>>(new SwaggerResponse<ResponseOfCreateOrderByShoppingCartApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<ResponseOfCreateOrderByShoppingCartApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = ResponseOfListOfGetOrderContractResponse.fromJS(
-        resultData200
-      );
-      return Promise.resolve<
-        SwaggerResponse<ResponseOfListOfGetOrderContractResponse>
-      >(
-        new SwaggerResponse<ResponseOfListOfGetOrderContractResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    create(createOrderApiRequest: CreateOrderApiRequest , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfCreateOrderApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Order/Create";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(createOrderApiRequest);
+
+        let options_ = <AxiosRequestConfig>{
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processCreate(_response));
+        });
     }
-    return Promise.resolve<
-      SwaggerResponse<ResponseOfListOfGetOrderContractResponse>
-    >(new SwaggerResponse(status, _headers, <any>null));
-  }
 
-  updateOrderStatus(
-    id: string,
-    orderId?: string | null | undefined,
-    reason?: string | null | undefined,
-    driverId?: string | null | undefined,
-    orderStatus?: OrderStatus | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<ResponseOfUpdateOrderContractResponse>> {
-    let url_ = this.baseUrl + "/api/v1/order/{id}?";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    if (orderId !== undefined && orderId !== null)
-      url_ += "OrderId=" + encodeURIComponent("" + orderId) + "&";
-    if (reason !== undefined && reason !== null)
-      url_ += "Reason=" + encodeURIComponent("" + reason) + "&";
-    if (driverId !== undefined && driverId !== null)
-      url_ += "DriverId=" + encodeURIComponent("" + driverId) + "&";
-    if (orderStatus === null)
-      throw new Error("The parameter 'orderStatus' cannot be null.");
-    else if (orderStatus !== undefined)
-      url_ += "OrderStatus=" + encodeURIComponent("" + orderStatus) + "&";
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "PUT",
-      url: url_,
-      headers: {
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processCreate(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfCreateOrderApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processUpdateOrderStatus(_response)
-        );
-      });
-  }
-
-  protected processUpdateOrderStatus(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<ResponseOfUpdateOrderContractResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfCreateOrderApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfCreateOrderApiResponse>>(new SwaggerResponse<ResponseOfCreateOrderApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<ResponseOfCreateOrderApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = ResponseOfUpdateOrderContractResponse.fromJS(resultData200);
-      return Promise.resolve<
-        SwaggerResponse<ResponseOfUpdateOrderContractResponse>
-      >(
-        new SwaggerResponse<ResponseOfUpdateOrderContractResponse>(
-          status,
-          _headers,
-          result200
-        )
-      );
-    } else if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    getAll(order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfGetAllOrderByUserIDApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Order/GetAll?";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGetAll(_response));
+        });
     }
-    return Promise.resolve<
-      SwaggerResponse<ResponseOfUpdateOrderContractResponse>
-    >(new SwaggerResponse(status, _headers, <any>null));
-  }
-}
 
-export class PortionClient extends AuthorizedApiBase {
-  private instance: AxiosInstance;
-  private baseUrl: string;
-  protected jsonParseReviver:
-    | ((key: string, value: any) => any)
-    | undefined = undefined;
-
-  constructor(
-    configuration: IConfig,
-    baseUrl?: string,
-    instance?: AxiosInstance
-  ) {
-    super(configuration);
-    this.instance = instance ? instance : axios.create();
-    this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
-  }
-
-  getPortion(
-    id?: string | null | undefined,
-    pageNumber?: number | undefined,
-    pageSize?: number | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<void>> {
-    let url_ = this.baseUrl + "/api/v1/portion?";
-    if (id !== undefined && id !== null)
-      url_ += "Id=" + encodeURIComponent("" + id) + "&";
-    if (pageNumber === null)
-      throw new Error("The parameter 'pageNumber' cannot be null.");
-    else if (pageNumber !== undefined)
-      url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
-    if (pageSize === null)
-      throw new Error("The parameter 'pageSize' cannot be null.");
-    else if (pageSize !== undefined)
-      url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "GET",
-      url: url_,
-      headers: {},
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processGetAll(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfGetAllOrderByUserIDApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processGetPortion(_response)
-        );
-      });
-  }
-
-  protected processGetPortion(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<void>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfGetAllOrderByUserIDApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfGetAllOrderByUserIDApiResponse>>(new SwaggerResponse<PagedResponseOfGetAllOrderByUserIDApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfGetAllOrderByUserIDApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    get(id?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfGetOrderByOrderIDApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Order?";
+        if (id !== undefined && id !== null)
+            url_ += "Id=" + encodeURIComponent("" + id) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGet(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<void>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  createPortion(
-    createPortionRequest: CreatePortionRequest,
-    pageNumber?: number | undefined,
-    pageSize?: number | undefined,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<void>> {
-    let url_ = this.baseUrl + "/api/v1/portion?";
-    if (pageNumber === null)
-      throw new Error("The parameter 'pageNumber' cannot be null.");
-    else if (pageNumber !== undefined)
-      url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
-    if (pageSize === null)
-      throw new Error("The parameter 'pageSize' cannot be null.");
-    else if (pageSize !== undefined)
-      url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
-    url_ = url_.replace(/[?&]$/, "");
-
-    const content_ = JSON.stringify(createPortionRequest);
-
-    let options_ = <AxiosRequestConfig>{
-      data: content_,
-      method: "POST",
-      url: url_,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processGet(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfGetOrderByOrderIDApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processCreatePortion(_response)
-        );
-      });
-  }
-
-  protected processCreatePortion(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<void>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfGetOrderByOrderIDApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfGetOrderByOrderIDApiResponse>>(new SwaggerResponse<ResponseOfGetOrderByOrderIDApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<ResponseOfGetOrderByOrderIDApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    updateStatus(updateOrderQuery: UpdateStatusApiRequest , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfUpdateStatusApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Order/ChangeStatus";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(updateOrderQuery);
+
+        let options_ = <AxiosRequestConfig>{
+            data: content_,
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processUpdateStatus(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<void>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  updatePortion(
-    updatePortionSizeRequest: UpdatePortionSizeRequest,
-    id: string,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<void>> {
-    let url_ = this.baseUrl + "/api/v1/portion/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
-
-    const content_ = JSON.stringify(updatePortionSizeRequest);
-
-    let options_ = <AxiosRequestConfig>{
-      data: content_,
-      method: "PUT",
-      url: url_,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processUpdateStatus(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfUpdateStatusApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processUpdatePortion(_response)
-        );
-      });
-  }
-
-  protected processUpdatePortion(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<void>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfUpdateStatusApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfUpdateStatusApiResponse>>(new SwaggerResponse<ResponseOfUpdateStatusApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<ResponseOfUpdateStatusApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    getStoreOrderItems(statusType?: MobileOrderStatusType | undefined, order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfGetOrderItemsByStoreIdApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Order/GetStoreOrderItems?";
+        if (statusType === null)
+            throw new Error("The parameter 'statusType' cannot be null.");
+        else if (statusType !== undefined)
+            url_ += "StatusType=" + encodeURIComponent("" + statusType) + "&";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGetStoreOrderItems(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<void>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  deletePortion(
-    deletePortionRequest: DeletePortionRequest,
-    id: string,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<void>> {
-    let url_ = this.baseUrl + "/api/v1/portion/{id}";
-    if (id === undefined || id === null)
-      throw new Error("The parameter 'id' must be defined.");
-    url_ = url_.replace("{id}", encodeURIComponent("" + id));
-    url_ = url_.replace(/[?&]$/, "");
-
-    const content_ = JSON.stringify(deletePortionRequest);
-
-    let options_ = <AxiosRequestConfig>{
-      data: content_,
-      method: "DELETE",
-      url: url_,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processGetStoreOrderItems(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfGetOrderItemsByStoreIdApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processDeletePortion(_response)
-        );
-      });
-  }
-
-  protected processDeletePortion(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<void>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfGetOrderItemsByStoreIdApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfGetOrderItemsByStoreIdApiResponse>>(new SwaggerResponse<PagedResponseOfGetOrderItemsByStoreIdApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfGetOrderItemsByStoreIdApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    getOrderMetaData(  cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfGetOrderMetaDataApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Order/GetOrderMetaData";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGetOrderMetaData(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<void>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
-}
 
-export class RestaurantClient extends AuthorizedApiBase {
-  private instance: AxiosInstance;
-  private baseUrl: string;
-  protected jsonParseReviver:
-    | ((key: string, value: any) => any)
-    | undefined = undefined;
-
-  constructor(
-    configuration: IConfig,
-    baseUrl?: string,
-    instance?: AxiosInstance
-  ) {
-    super(configuration);
-    this.instance = instance ? instance : axios.create();
-    this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
-  }
-
-  getPortion(
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<void>> {
-    let url_ = this.baseUrl + "/api/v1/restaurant";
-    url_ = url_.replace(/[?&]$/, "");
-
-    let options_ = <AxiosRequestConfig>{
-      method: "GET",
-      url: url_,
-      headers: {},
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processGetOrderMetaData(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfGetOrderMetaDataApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processGetPortion(_response)
-        );
-      });
-  }
-
-  protected processGetPortion(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<void>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfGetOrderMetaDataApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfGetOrderMetaDataApiResponse>>(new SwaggerResponse<ResponseOfGetOrderMetaDataApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<ResponseOfGetOrderMetaDataApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 412) {
-      const _responseText = response.data;
-      let result412: any = null;
-      let resultData412 = _responseText;
-      result412 = BadResponse.fromJS(resultData412);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result412
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = ErrorResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    getCompletedOrderDetail(orderId?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfGetCompletedOrderDetailsApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Order/GetCompletedOrderDetails?";
+        if (orderId !== undefined && orderId !== null)
+            url_ += "OrderId=" + encodeURIComponent("" + orderId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGetCompletedOrderDetail(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<void>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
-}
 
-export class IdentityClient extends AuthorizedApiBase {
-  private instance: AxiosInstance;
-  private baseUrl: string;
-  protected jsonParseReviver:
-    | ((key: string, value: any) => any)
-    | undefined = undefined;
-
-  constructor(
-    configuration: IConfig,
-    baseUrl?: string,
-    instance?: AxiosInstance
-  ) {
-    super(configuration);
-    this.instance = instance ? instance : axios.create();
-    this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
-  }
-
-  register(
-    request: UserRegistrationRequest,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<AuthSuccessResponse>> {
-    let url_ = this.baseUrl + "/api/v1/identity/register";
-    url_ = url_.replace(/[?&]$/, "");
-
-    const content_ = JSON.stringify(request);
-
-    let options_ = <AxiosRequestConfig>{
-      data: content_,
-      method: "POST",
-      url: url_,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processGetCompletedOrderDetail(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfGetCompletedOrderDetailsApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processRegister(_response)
-        );
-      });
-  }
-
-  protected processRegister(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<AuthSuccessResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfGetCompletedOrderDetailsApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfGetCompletedOrderDetailsApiResponse>>(new SwaggerResponse<ResponseOfGetCompletedOrderDetailsApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<ResponseOfGetCompletedOrderDetailsApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 201) {
-      const _responseText = response.data;
-      let result201: any = null;
-      let resultData201 = _responseText;
-      result201 = AuthSuccessResponse.fromJS(resultData201);
-      return Promise.resolve<SwaggerResponse<AuthSuccessResponse>>(
-        new SwaggerResponse<AuthSuccessResponse>(status, _headers, result201)
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = AuthFailedResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status === 500) {
-      const _responseText = response.data;
-      let result500: any = null;
-      let resultData500 = _responseText;
-      result500 = AuthFailedResponse.fromJS(resultData500);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result500
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+}
+
+export class ShoppingCartClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
     }
-    return Promise.resolve<SwaggerResponse<AuthSuccessResponse>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  login(
-    request: UserLoginRequest,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<AuthSuccessResponse>> {
-    let url_ = this.baseUrl + "/api/v1/identity/login";
-    url_ = url_.replace(/[?&]$/, "");
+    add(addtoShoppingCartApiRequest: AddToShoppingCartApiRequest , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfAddToShoppingCartApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Cart/Add";
+        url_ = url_.replace(/[?&]$/, "");
 
-    const content_ = JSON.stringify(request);
+        const content_ = JSON.stringify(addtoShoppingCartApiRequest);
 
-    let options_ = <AxiosRequestConfig>{
-      data: content_,
-      method: "POST",
-      url: url_,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
+        let options_ = <AxiosRequestConfig>{
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
 
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processAdd(_response));
+        });
+    }
+
+    protected processAdd(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfAddToShoppingCartApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processLogin(_response)
-        );
-      });
-  }
-
-  protected processLogin(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<AuthSuccessResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfAddToShoppingCartApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfAddToShoppingCartApiResponse>>(new SwaggerResponse<ResponseOfAddToShoppingCartApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<ResponseOfAddToShoppingCartApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 201) {
-      const _responseText = response.data;
-      let result201: any = null;
-      let resultData201 = _responseText;
-      result201 = AuthSuccessResponse.fromJS(resultData201);
-      return Promise.resolve<SwaggerResponse<AuthSuccessResponse>>(
-        new SwaggerResponse<AuthSuccessResponse>(status, _headers, result201)
-      );
-    } else if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = AuthSuccessResponse.fromJS(resultData200);
-      return Promise.resolve<SwaggerResponse<AuthSuccessResponse>>(
-        new SwaggerResponse<AuthSuccessResponse>(status, _headers, result200)
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = AuthFailedResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    get(cartQuery?: GetShoppingCartApiRequest | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfGetShoppingCartApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Cart?";
+        if (cartQuery !== undefined && cartQuery !== null)
+            url_ += "cartQuery=" + encodeURIComponent("" + cartQuery) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGet(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<AuthSuccessResponse>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
 
-  refresh(
-    request: RefreshTokenRequest,
-    cancelToken?: CancelToken | undefined
-  ): Promise<SwaggerResponse<AuthSuccessResponse>> {
-    let url_ = this.baseUrl + "/api/v1/identity/refresh";
-    url_ = url_.replace(/[?&]$/, "");
-
-    const content_ = JSON.stringify(request);
-
-    let options_ = <AxiosRequestConfig>{
-      data: content_,
-      method: "POST",
-      url: url_,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      cancelToken,
-    };
-
-    return this.transformOptions(options_)
-      .then((transformedOptions_) => {
-        return this.instance.request(transformedOptions_);
-      })
-      .catch((_error: any) => {
-        if (isAxiosError(_error) && _error.response) {
-          return _error.response;
-        } else {
-          throw _error;
+    protected processGet(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfGetShoppingCartApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
         }
-      })
-      .then((_response: AxiosResponse) => {
-        return this.transformResult(
-          url_,
-          _response,
-          (_response: AxiosResponse) => this.processRefresh(_response)
-        );
-      });
-  }
-
-  protected processRefresh(
-    response: AxiosResponse
-  ): Promise<SwaggerResponse<AuthSuccessResponse>> {
-    const status = response.status;
-    let _headers: any = {};
-    if (response.headers && typeof response.headers === "object") {
-      for (let k in response.headers) {
-        if (response.headers.hasOwnProperty(k)) {
-          _headers[k] = response.headers[k];
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfGetShoppingCartApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfGetShoppingCartApiResponse>>(new SwaggerResponse<ResponseOfGetShoppingCartApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
-      }
+        return Promise.resolve<SwaggerResponse<ResponseOfGetShoppingCartApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    if (status === 201) {
-      const _responseText = response.data;
-      let result201: any = null;
-      let resultData201 = _responseText;
-      result201 = AuthSuccessResponse.fromJS(resultData201);
-      return Promise.resolve<SwaggerResponse<AuthSuccessResponse>>(
-        new SwaggerResponse<AuthSuccessResponse>(status, _headers, result201)
-      );
-    } else if (status === 200) {
-      const _responseText = response.data;
-      let result200: any = null;
-      let resultData200 = _responseText;
-      result200 = AuthSuccessResponse.fromJS(resultData200);
-      return Promise.resolve<SwaggerResponse<AuthSuccessResponse>>(
-        new SwaggerResponse<AuthSuccessResponse>(status, _headers, result200)
-      );
-    } else if (status === 400) {
-      const _responseText = response.data;
-      let result400: any = null;
-      let resultData400 = _responseText;
-      result400 = AuthFailedResponse.fromJS(resultData400);
-      return throwException(
-        "A server side error occurred.",
-        status,
-        _responseText,
-        _headers,
-        result400
-      );
-    } else if (status !== 200 && status !== 204) {
-      const _responseText = response.data;
-      return throwException(
-        "An unexpected server error occurred.",
-        status,
-        _responseText,
-        _headers
-      );
+
+    updateQuantity(cartItemId?: string | null | undefined, quantity?: number | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfUpdateShoppingCartItemApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Cart/UpdateQuantity?";
+        if (cartItemId !== undefined && cartItemId !== null)
+            url_ += "CartItemId=" + encodeURIComponent("" + cartItemId) + "&";
+        if (quantity === null)
+            throw new Error("The parameter 'quantity' cannot be null.");
+        else if (quantity !== undefined)
+            url_ += "Quantity=" + encodeURIComponent("" + quantity) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processUpdateQuantity(_response));
+        });
     }
-    return Promise.resolve<SwaggerResponse<AuthSuccessResponse>>(
-      new SwaggerResponse(status, _headers, <any>null)
-    );
-  }
+
+    protected processUpdateQuantity(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfUpdateShoppingCartItemApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfUpdateShoppingCartItemApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfUpdateShoppingCartItemApiResponse>>(new SwaggerResponse<ResponseOfUpdateShoppingCartItemApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfUpdateShoppingCartItemApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    deleteAll(shoppingCartId?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfDeleteShoppingCartApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Cart/DeleteAll?";
+        if (shoppingCartId !== undefined && shoppingCartId !== null)
+            url_ += "ShoppingCartId=" + encodeURIComponent("" + shoppingCartId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processDeleteAll(_response));
+        });
+    }
+
+    protected processDeleteAll(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfDeleteShoppingCartApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfDeleteShoppingCartApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfDeleteShoppingCartApiResponse>>(new SwaggerResponse<ResponseOfDeleteShoppingCartApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfDeleteShoppingCartApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    delete(cartItemId?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfDeleteShoppingCartItemApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Cart/Delete?";
+        if (cartItemId !== undefined && cartItemId !== null)
+            url_ += "CartItemId=" + encodeURIComponent("" + cartItemId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processDelete(_response));
+        });
+    }
+
+    protected processDelete(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfDeleteShoppingCartItemApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfDeleteShoppingCartItemApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfDeleteShoppingCartItemApiResponse>>(new SwaggerResponse<ResponseOfDeleteShoppingCartItemApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfDeleteShoppingCartItemApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    validate(cartId?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfValidateShopingCartItemApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Cart/Validate?";
+        if (cartId !== undefined && cartId !== null)
+            url_ += "CartId=" + encodeURIComponent("" + cartId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processValidate(_response));
+        });
+    }
+
+    protected processValidate(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfValidateShopingCartItemApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfValidateShopingCartItemApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfValidateShopingCartItemApiResponse>>(new SwaggerResponse<ResponseOfValidateShopingCartItemApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfValidateShopingCartItemApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
 }
 
-export class PagedResponseOfGetAddOnResponse
-  implements IPagedResponseOfGetAddOnResponse {
-  data?: GetAddOnResponse[] | undefined;
-  pageNumber?: number | undefined;
-  pageSize?: number | undefined;
-  _links?: Links | undefined;
+export class StoreCategoryClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
 
-  constructor(data?: IPagedResponseOfGetAddOnResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
     }
-  }
 
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["data"])) {
-        this.data = [] as any;
-        for (let item of _data["data"])
-          this.data!.push(GetAddOnResponse.fromJS(item));
-      }
-      this.pageNumber = _data["pageNumber"];
-      this.pageSize = _data["pageSize"];
-      this._links = _data["_links"]
-        ? Links.fromJS(_data["_links"])
-        : <any>undefined;
+    createStoreCategory(name?: string | null | undefined, description?: string | null | undefined, icon?: FileParameter | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfStoreCategoryCreateApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/StoreCategory/Create";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = new FormData();
+        if (name !== null && name !== undefined)
+            content_.append("Name", name.toString());
+        if (description !== null && description !== undefined)
+            content_.append("Description", description.toString());
+        if (icon !== null && icon !== undefined)
+            content_.append("Icon", icon.data, icon.fileName ? icon.fileName : "Icon");
+
+        let options_ = <AxiosRequestConfig>{
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processCreateStoreCategory(_response));
+        });
     }
-  }
 
-  static fromJS(data: any): PagedResponseOfGetAddOnResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new PagedResponseOfGetAddOnResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.data)) {
-      data["data"] = [];
-      for (let item of this.data) data["data"].push(item.toJSON());
+    protected processCreateStoreCategory(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfStoreCategoryCreateApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfStoreCategoryCreateApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfStoreCategoryCreateApiResponse>>(new SwaggerResponse<ResponseOfStoreCategoryCreateApiResponse>(status, _headers, result200));
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfStoreCategoryCreateApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    data["pageNumber"] = this.pageNumber;
-    data["pageSize"] = this.pageSize;
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
+
+    getStoreCategory(pageNo?: number | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfStoreCategoryGetApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/StoreCategory?";
+        if (pageNo === null)
+            throw new Error("The parameter 'pageNo' cannot be null.");
+        else if (pageNo !== undefined)
+            url_ += "PageNo=" + encodeURIComponent("" + pageNo) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGetStoreCategory(_response));
+        });
+    }
+
+    protected processGetStoreCategory(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfStoreCategoryGetApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfStoreCategoryGetApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfStoreCategoryGetApiResponse>>(new SwaggerResponse<PagedResponseOfStoreCategoryGetApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfStoreCategoryGetApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
 }
 
-export interface IPagedResponseOfGetAddOnResponse {
-  data?: GetAddOnResponse[] | undefined;
-  pageNumber?: number | undefined;
-  pageSize?: number | undefined;
-  _links?: Links | undefined;
+export class StoreClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
+    }
+
+    get(storeId?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfStoreGetApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Store/Profile?";
+        if (storeId !== undefined && storeId !== null)
+            url_ += "StoreId=" + encodeURIComponent("" + storeId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGet(_response));
+        });
+    }
+
+    protected processGet(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfStoreGetApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfStoreGetApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfStoreGetApiResponse>>(new SwaggerResponse<ResponseOfStoreGetApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfStoreGetApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    search(name?: string | null | undefined, order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfSearchStoreApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Store/Search?";
+        if (name !== undefined && name !== null)
+            url_ += "Name=" + encodeURIComponent("" + name) + "&";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processSearch(_response));
+        });
+    }
+
+    protected processSearch(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfSearchStoreApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfSearchStoreApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfSearchStoreApiResponse>>(new SwaggerResponse<PagedResponseOfSearchStoreApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfSearchStoreApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    setFollowStore(storeId?: string | null | undefined, isFollow?: boolean | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfSetFollowStoreApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/Store/SetFollow?";
+        if (storeId !== undefined && storeId !== null)
+            url_ += "StoreId=" + encodeURIComponent("" + storeId) + "&";
+        if (isFollow === null)
+            throw new Error("The parameter 'isFollow' cannot be null.");
+        else if (isFollow !== undefined)
+            url_ += "IsFollow=" + encodeURIComponent("" + isFollow) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processSetFollowStore(_response));
+        });
+    }
+
+    protected processSetFollowStore(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfSetFollowStoreApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfSetFollowStoreApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfSetFollowStoreApiResponse>>(new SwaggerResponse<ResponseOfSetFollowStoreApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfSetFollowStoreApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    getPagePosts(storeId?: string | null | undefined, order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfPagePostResponseModel>> {
+        let url_ = this.baseUrl + "/api/v1/Store/GetPagePosts?";
+        if (storeId !== undefined && storeId !== null)
+            url_ += "StoreId=" + encodeURIComponent("" + storeId) + "&";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGetPagePosts(_response));
+        });
+    }
+
+    protected processGetPagePosts(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfPagePostResponseModel>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfPagePostResponseModel.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfPagePostResponseModel>>(new SwaggerResponse<PagedResponseOfPagePostResponseModel>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfPagePostResponseModel>>(new SwaggerResponse(status, _headers, <any>null));
+    }
 }
 
-export class GetAddOnResponse implements IGetAddOnResponse {
-  addOnListModels?: AddOnListModel[] | undefined;
+export class UserClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
 
-  constructor(data?: IGetAddOnResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
     }
-  }
 
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["addOnListModels"])) {
-        this.addOnListModels = [] as any;
-        for (let item of _data["addOnListModels"])
-          this.addOnListModels!.push(AddOnListModel.fromJS(item));
-      }
+    profile(itemQuery?: GetUserProfileApiRequeset | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfGetUserProfileApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/User/Profile?";
+        if (itemQuery !== undefined && itemQuery !== null)
+            url_ += "itemQuery=" + encodeURIComponent("" + itemQuery) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processProfile(_response));
+        });
     }
-  }
 
-  static fromJS(data: any): GetAddOnResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new GetAddOnResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.addOnListModels)) {
-      data["addOnListModels"] = [];
-      for (let item of this.addOnListModels)
-        data["addOnListModels"].push(item.toJSON());
+    protected processProfile(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfGetUserProfileApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfGetUserProfileApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfGetUserProfileApiResponse>>(new SwaggerResponse<ResponseOfGetUserProfileApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfGetUserProfileApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
     }
-    return data;
-  }
+
+    editProfile(firstName?: string | null | undefined, lastName?: string | null | undefined, phoneNumber?: string | null | undefined, profilePic?: string | null | undefined, dateOfBirth?: string | null | undefined, timeZone?: string | null | undefined, gender?: Gender | undefined, address_Street?: string | null | undefined, address_State?: string | null | undefined, address_City?: string | null | undefined, address_PostalCode?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfEditUserProfileApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/User/EditProfile?";
+        if (firstName !== undefined && firstName !== null)
+            url_ += "FirstName=" + encodeURIComponent("" + firstName) + "&";
+        if (lastName !== undefined && lastName !== null)
+            url_ += "LastName=" + encodeURIComponent("" + lastName) + "&";
+        if (phoneNumber !== undefined && phoneNumber !== null)
+            url_ += "PhoneNumber=" + encodeURIComponent("" + phoneNumber) + "&";
+        if (profilePic !== undefined && profilePic !== null)
+            url_ += "ProfilePic=" + encodeURIComponent("" + profilePic) + "&";
+        if (dateOfBirth !== undefined && dateOfBirth !== null)
+            url_ += "DateOfBirth=" + encodeURIComponent("" + dateOfBirth) + "&";
+        if (timeZone !== undefined && timeZone !== null)
+            url_ += "TimeZone=" + encodeURIComponent("" + timeZone) + "&";
+        if (gender === null)
+            throw new Error("The parameter 'gender' cannot be null.");
+        else if (gender !== undefined)
+            url_ += "Gender=" + encodeURIComponent("" + gender) + "&";
+        if (address_Street !== undefined && address_Street !== null)
+            url_ += "Address.Street=" + encodeURIComponent("" + address_Street) + "&";
+        if (address_State !== undefined && address_State !== null)
+            url_ += "Address.State=" + encodeURIComponent("" + address_State) + "&";
+        if (address_City !== undefined && address_City !== null)
+            url_ += "Address.City=" + encodeURIComponent("" + address_City) + "&";
+        if (address_PostalCode !== undefined && address_PostalCode !== null)
+            url_ += "Address.PostalCode=" + encodeURIComponent("" + address_PostalCode) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processEditProfile(_response));
+        });
+    }
+
+    protected processEditProfile(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfEditUserProfileApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfEditUserProfileApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfEditUserProfileApiResponse>>(new SwaggerResponse<ResponseOfEditUserProfileApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfEditUserProfileApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    searchProfile(searchText?: string | null | undefined, order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfListOfSearchUserProfileApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/User/SearchProfile?";
+        if (searchText !== undefined && searchText !== null)
+            url_ += "SearchText=" + encodeURIComponent("" + searchText) + "&";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processSearchProfile(_response));
+        });
+    }
+
+    protected processSearchProfile(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfListOfSearchUserProfileApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfListOfSearchUserProfileApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfListOfSearchUserProfileApiResponse>>(new SwaggerResponse<PagedResponseOfListOfSearchUserProfileApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfListOfSearchUserProfileApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    setFollow(followerFollowingId?: string | null | undefined, isFollow?: boolean | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfSetFollowApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/User/SetFollow?";
+        if (followerFollowingId !== undefined && followerFollowingId !== null)
+            url_ += "FollowerFollowingId=" + encodeURIComponent("" + followerFollowingId) + "&";
+        if (isFollow === null)
+            throw new Error("The parameter 'isFollow' cannot be null.");
+        else if (isFollow !== undefined)
+            url_ += "IsFollow=" + encodeURIComponent("" + isFollow) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processSetFollow(_response));
+        });
+    }
+
+    protected processSetFollow(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfSetFollowApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfSetFollowApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfSetFollowApiResponse>>(new SwaggerResponse<ResponseOfSetFollowApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfSetFollowApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    getFollow(followType?: FollowType | undefined, name?: string | null | undefined, order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfListOfGetFollowApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/User/GetFollow?";
+        if (followType === null)
+            throw new Error("The parameter 'followType' cannot be null.");
+        else if (followType !== undefined)
+            url_ += "FollowType=" + encodeURIComponent("" + followType) + "&";
+        if (name !== undefined && name !== null)
+            url_ += "Name=" + encodeURIComponent("" + name) + "&";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGetFollow(_response));
+        });
+    }
+
+    protected processGetFollow(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfListOfGetFollowApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfListOfGetFollowApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfListOfGetFollowApiResponse>>(new SwaggerResponse<PagedResponseOfListOfGetFollowApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfListOfGetFollowApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    updateNotification(updateQery: UpdateNotificationRequest , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfUpdateNotificationResponse>> {
+        let url_ = this.baseUrl + "/api/v1/User/UpdateNotificationSettings";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(updateQery);
+
+        let options_ = <AxiosRequestConfig>{
+            data: content_,
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processUpdateNotification(_response));
+        });
+    }
+
+    protected processUpdateNotification(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfUpdateNotificationResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfUpdateNotificationResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfUpdateNotificationResponse>>(new SwaggerResponse<ResponseOfUpdateNotificationResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfUpdateNotificationResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
 }
 
-export interface IGetAddOnResponse {
-  addOnListModels?: AddOnListModel[] | undefined;
+export class UserIdentityClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
+    }
+
+    registerUserIdentity(firstName?: string | null | undefined, lastName?: string | null | undefined, emailAddress?: string | null | undefined, password?: string | null | undefined, applicationType?: ApplicationType | undefined, phoneNumber?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfRegisterPostApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/UserIdentity/Register?";
+        if (firstName !== undefined && firstName !== null)
+            url_ += "FirstName=" + encodeURIComponent("" + firstName) + "&";
+        if (lastName !== undefined && lastName !== null)
+            url_ += "LastName=" + encodeURIComponent("" + lastName) + "&";
+        if (emailAddress !== undefined && emailAddress !== null)
+            url_ += "EmailAddress=" + encodeURIComponent("" + emailAddress) + "&";
+        if (password !== undefined && password !== null)
+            url_ += "Password=" + encodeURIComponent("" + password) + "&";
+        if (applicationType === null)
+            throw new Error("The parameter 'applicationType' cannot be null.");
+        else if (applicationType !== undefined)
+            url_ += "ApplicationType=" + encodeURIComponent("" + applicationType) + "&";
+        if (phoneNumber !== undefined && phoneNumber !== null)
+            url_ += "PhoneNumber=" + encodeURIComponent("" + phoneNumber) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processRegisterUserIdentity(_response));
+        });
+    }
+
+    protected processRegisterUserIdentity(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfRegisterPostApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfRegisterPostApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfRegisterPostApiResponse>>(new SwaggerResponse<ResponseOfRegisterPostApiResponse>(status, _headers, result200));
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = BadResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfRegisterPostApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    generateOTP(phoneNumber?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfGenerateOTPApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/UserIdentity/GenerateOTP?";
+        if (phoneNumber !== undefined && phoneNumber !== null)
+            url_ += "PhoneNumber=" + encodeURIComponent("" + phoneNumber) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGenerateOTP(_response));
+        });
+    }
+
+    protected processGenerateOTP(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfGenerateOTPApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfGenerateOTPApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfGenerateOTPApiResponse>>(new SwaggerResponse<ResponseOfGenerateOTPApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfGenerateOTPApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    validateOTP(otpCode?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfValidateOTPApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/UserIdentity/ValidateOTP?";
+        if (otpCode !== undefined && otpCode !== null)
+            url_ += "OtpCode=" + encodeURIComponent("" + otpCode) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processValidateOTP(_response));
+        });
+    }
+
+    protected processValidateOTP(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfValidateOTPApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfValidateOTPApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfValidateOTPApiResponse>>(new SwaggerResponse<ResponseOfValidateOTPApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfValidateOTPApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    signIn(emailAddress?: string | null | undefined, password?: string | null | undefined, applicationType?: ApplicationType | undefined, isPersistent?: boolean | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfSignInApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/UserIdentity/SignIn?";
+        if (emailAddress !== undefined && emailAddress !== null)
+            url_ += "EmailAddress=" + encodeURIComponent("" + emailAddress) + "&";
+        if (password !== undefined && password !== null)
+            url_ += "Password=" + encodeURIComponent("" + password) + "&";
+        if (applicationType === null)
+            throw new Error("The parameter 'applicationType' cannot be null.");
+        else if (applicationType !== undefined)
+            url_ += "ApplicationType=" + encodeURIComponent("" + applicationType) + "&";
+        if (isPersistent === null)
+            throw new Error("The parameter 'isPersistent' cannot be null.");
+        else if (isPersistent !== undefined)
+            url_ += "IsPersistent=" + encodeURIComponent("" + isPersistent) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processSignIn(_response));
+        });
+    }
+
+    protected processSignIn(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfSignInApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfSignInApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfSignInApiResponse>>(new SwaggerResponse<ResponseOfSignInApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfSignInApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    forgotPassword(emailAddress?: string | null | undefined, applicationType?: ApplicationType | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfForgotPasswordApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/UserIdentity/ForgotPassword?";
+        if (emailAddress !== undefined && emailAddress !== null)
+            url_ += "EmailAddress=" + encodeURIComponent("" + emailAddress) + "&";
+        if (applicationType === null)
+            throw new Error("The parameter 'applicationType' cannot be null.");
+        else if (applicationType !== undefined)
+            url_ += "ApplicationType=" + encodeURIComponent("" + applicationType) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processForgotPassword(_response));
+        });
+    }
+
+    protected processForgotPassword(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfForgotPasswordApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfForgotPasswordApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfForgotPasswordApiResponse>>(new SwaggerResponse<ResponseOfForgotPasswordApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfForgotPasswordApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    changePassword(oldPassword?: string | null | undefined, newPassword?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfChangePasswordApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/UserIdentity/ChangePassword?";
+        if (oldPassword !== undefined && oldPassword !== null)
+            url_ += "OldPassword=" + encodeURIComponent("" + oldPassword) + "&";
+        if (newPassword !== undefined && newPassword !== null)
+            url_ += "NewPassword=" + encodeURIComponent("" + newPassword) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processChangePassword(_response));
+        });
+    }
+
+    protected processChangePassword(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfChangePasswordApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfChangePasswordApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfChangePasswordApiResponse>>(new SwaggerResponse<ResponseOfChangePasswordApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfChangePasswordApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    resetPassword(code?: string | null | undefined, email?: string | null | undefined, newPassword?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfResetPasswordApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/UserIdentity/ResetPassword?";
+        if (code !== undefined && code !== null)
+            url_ += "Code=" + encodeURIComponent("" + code) + "&";
+        if (email !== undefined && email !== null)
+            url_ += "Email=" + encodeURIComponent("" + email) + "&";
+        if (newPassword !== undefined && newPassword !== null)
+            url_ += "NewPassword=" + encodeURIComponent("" + newPassword) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processResetPassword(_response));
+        });
+    }
+
+    protected processResetPassword(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfResetPasswordApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfResetPasswordApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfResetPasswordApiResponse>>(new SwaggerResponse<ResponseOfResetPasswordApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfResetPasswordApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    signOut(model?: SignOutApiRequest | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfSignOutApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/UserIdentity/SignOut?";
+        if (model !== undefined && model !== null)
+            url_ += "model=" + encodeURIComponent("" + model) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processSignOut(_response));
+        });
+    }
+
+    protected processSignOut(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfSignOutApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfSignOutApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfSignOutApiResponse>>(new SwaggerResponse<ResponseOfSignOutApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfSignOutApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
+
+    isExistsUser(emailAddress?: string | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfIsExistsUserApiResponse>> {
+        let url_ = this.baseUrl + "/api/v1/UserIdentity/IsExistsUser?";
+        if (emailAddress !== undefined && emailAddress !== null)
+            url_ += "EmailAddress=" + encodeURIComponent("" + emailAddress) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processIsExistsUser(_response));
+        });
+    }
+
+    protected processIsExistsUser(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfIsExistsUserApiResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfIsExistsUserApiResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfIsExistsUserApiResponse>>(new SwaggerResponse<ResponseOfIsExistsUserApiResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfIsExistsUserApiResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
 }
 
-export class AddOnListModel implements IAddOnListModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  price!: number;
-  isEnable?: boolean | undefined;
+export class WishListClient extends AuthorizedApiBase {
+    private instance: AxiosInstance;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
 
-  constructor(data?: IAddOnListModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
+    constructor(configuration: IConfig, baseUrl?: string, instance?: AxiosInstance) {
+        super(configuration);
+        this.instance = instance ? instance : axios.create();
+        this.baseUrl = baseUrl ? baseUrl : this.getBaseUrl("https://empite.host");
     }
-  }
 
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.price = _data["price"];
-      this.isEnable = _data["isEnable"];
+    get(dealId?: string | null | undefined, userId?: string | null | undefined, order?: ResultSortOrder | undefined, pageNumber?: number | undefined, pageSize?: number | undefined, totalCount?: number | null | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<PagedResponseOfGetWishListAPIResponse>> {
+        let url_ = this.baseUrl + "/api/v1/WishList?";
+        if (dealId !== undefined && dealId !== null)
+            url_ += "DealId=" + encodeURIComponent("" + dealId) + "&";
+        if (userId !== undefined && userId !== null)
+            url_ += "UserId=" + encodeURIComponent("" + userId) + "&";
+        if (order === null)
+            throw new Error("The parameter 'order' cannot be null.");
+        else if (order !== undefined)
+            url_ += "Order=" + encodeURIComponent("" + order) + "&";
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        if (totalCount !== undefined && totalCount !== null)
+            url_ += "TotalCount=" + encodeURIComponent("" + totalCount) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processGet(_response));
+        });
     }
-  }
 
-  static fromJS(data: any): AddOnListModel {
-    data = typeof data === "object" ? data : {};
-    let result = new AddOnListModel();
-    result.init(data);
-    return result;
-  }
+    protected processGet(response: AxiosResponse): Promise<SwaggerResponse<PagedResponseOfGetWishListAPIResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = PagedResponseOfGetWishListAPIResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<PagedResponseOfGetWishListAPIResponse>>(new SwaggerResponse<PagedResponseOfGetWishListAPIResponse>(status, _headers, result200));
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<PagedResponseOfGetWishListAPIResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
 
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["price"] = this.price;
-    data["isEnable"] = this.isEnable;
-    return data;
-  }
+    create(dealId?: string | null | undefined, isVipPack?: boolean | undefined, isAddToWishList?: boolean | undefined , cancelToken?: CancelToken | undefined): Promise<SwaggerResponse<ResponseOfCreateWishListAPIResponse>> {
+        let url_ = this.baseUrl + "/api/v1/WishList/Create?";
+        if (dealId !== undefined && dealId !== null)
+            url_ += "DealId=" + encodeURIComponent("" + dealId) + "&";
+        if (isVipPack === null)
+            throw new Error("The parameter 'isVipPack' cannot be null.");
+        else if (isVipPack !== undefined)
+            url_ += "IsVipPack=" + encodeURIComponent("" + isVipPack) + "&";
+        if (isAddToWishList === null)
+            throw new Error("The parameter 'isAddToWishList' cannot be null.");
+        else if (isAddToWishList !== undefined)
+            url_ += "IsAddToWishList=" + encodeURIComponent("" + isAddToWishList) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ = <AxiosRequestConfig>{
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.transformOptions(options_).then(transformedOptions_ => {
+            return this.instance.request(transformedOptions_);
+        }).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.transformResult(url_, _response, (_response: AxiosResponse) => this.processCreate(_response));
+        });
+    }
+
+    protected processCreate(response: AxiosResponse): Promise<SwaggerResponse<ResponseOfCreateWishListAPIResponse>> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (let k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ResponseOfCreateWishListAPIResponse.fromJS(resultData200);
+            return Promise.resolve<SwaggerResponse<ResponseOfCreateWishListAPIResponse>>(new SwaggerResponse<ResponseOfCreateWishListAPIResponse>(status, _headers, result200));
+        } else if (status === 412) {
+            const _responseText = response.data;
+            let result412: any = null;
+            let resultData412  = _responseText;
+            result412 = BadResponse.fromJS(resultData412);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result412);
+        } else if (status === 400) {
+            const _responseText = response.data;
+            let result400: any = null;
+            let resultData400  = _responseText;
+            result400 = ErrorResponse.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<SwaggerResponse<ResponseOfCreateWishListAPIResponse>>(new SwaggerResponse(status, _headers, <any>null));
+    }
 }
 
-export interface IAddOnListModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  price: number;
-  isEnable?: boolean | undefined;
+export class PagedResponseOfGetAllDealsApiResponse implements IPagedResponseOfGetAllDealsApiResponse {
+    data?: GetAllDealsApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfGetAllDealsApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(GetAllDealsApiResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfGetAllDealsApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfGetAllDealsApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
 }
 
-export class LinkBase implements ILinkBase {
-  self?: LinkHref | undefined;
-
-  constructor(data?: ILinkBase) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.self = _data["self"]
-        ? LinkHref.fromJS(_data["self"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): LinkBase {
-    data = typeof data === "object" ? data : {};
-    let result = new LinkBase();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["self"] = this.self ? this.self.toJSON() : <any>undefined;
-    return data;
-  }
+export interface IPagedResponseOfGetAllDealsApiResponse {
+    data?: GetAllDealsApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
 }
 
-export interface ILinkBase {
-  self?: LinkHref | undefined;
+export class GetAllDealsApiResponse implements IGetAllDealsApiResponse {
+    sizesAvailable?: SizeGetApiModel[] | undefined;
+    colorsAvailable?: ColorGetApiModel[] | undefined;
+    itemVarianceColorSizes?: ItemVarianceColorSizeGetApiModel[] | undefined;
+    id!: string;
+    createdAt!: moment.Moment;
+    deletedAt?: moment.Moment | undefined;
+    dealType!: DealType;
+    startDate?: moment.Moment | undefined;
+    endDate?: moment.Moment | undefined;
+    dealItemVariances?: DealItem[] | undefined;
+    item?: Item | undefined;
+    itemVarianceId!: string;
+    dealTitle?: string | undefined;
+    dealDescription?: string | undefined;
+    dealTags?: DealTag[] | undefined;
+    discountType?: DealDiscountType | undefined;
+    discountAmount?: number | undefined;
+    totaPriceWithDiscount?: number | undefined;
+    totaPriceWithoutDiscount?: number | undefined;
+    images?: DealImage[] | undefined;
+    status!: DealStatus;
+    store?: Store | undefined;
+    storeId?: string | undefined;
+    submitDate?: moment.Moment | undefined;
+    isEnabled!: boolean;
+    isfavourite!: boolean;
+    floorNumber?: string | undefined;
+    sizeChartImage?: string | undefined;
+    promotionMessageTime?: moment.Moment | undefined;
+
+    constructor(data?: IGetAllDealsApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["sizesAvailable"])) {
+                this.sizesAvailable = [] as any;
+                for (let item of _data["sizesAvailable"])
+                    this.sizesAvailable!.push(SizeGetApiModel.fromJS(item));
+            }
+            if (Array.isArray(_data["colorsAvailable"])) {
+                this.colorsAvailable = [] as any;
+                for (let item of _data["colorsAvailable"])
+                    this.colorsAvailable!.push(ColorGetApiModel.fromJS(item));
+            }
+            if (Array.isArray(_data["itemVarianceColorSizes"])) {
+                this.itemVarianceColorSizes = [] as any;
+                for (let item of _data["itemVarianceColorSizes"])
+                    this.itemVarianceColorSizes!.push(ItemVarianceColorSizeGetApiModel.fromJS(item));
+            }
+            this.id = _data["id"];
+            this.createdAt = _data["createdAt"] ? moment(_data["createdAt"].toString()) : <any>undefined;
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            this.dealType = _data["dealType"];
+            this.startDate = _data["startDate"] ? moment(_data["startDate"].toString()) : <any>undefined;
+            this.endDate = _data["endDate"] ? moment(_data["endDate"].toString()) : <any>undefined;
+            if (Array.isArray(_data["dealItemVariances"])) {
+                this.dealItemVariances = [] as any;
+                for (let item of _data["dealItemVariances"])
+                    this.dealItemVariances!.push(DealItem.fromJS(item));
+            }
+            this.item = _data["item"] ? Item.fromJS(_data["item"]) : <any>undefined;
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.dealTitle = _data["dealTitle"];
+            this.dealDescription = _data["dealDescription"];
+            if (Array.isArray(_data["dealTags"])) {
+                this.dealTags = [] as any;
+                for (let item of _data["dealTags"])
+                    this.dealTags!.push(DealTag.fromJS(item));
+            }
+            this.discountType = _data["discountType"];
+            this.discountAmount = _data["discountAmount"];
+            this.totaPriceWithDiscount = _data["totaPriceWithDiscount"];
+            this.totaPriceWithoutDiscount = _data["totaPriceWithoutDiscount"];
+            if (Array.isArray(_data["images"])) {
+                this.images = [] as any;
+                for (let item of _data["images"])
+                    this.images!.push(DealImage.fromJS(item));
+            }
+            this.status = _data["status"];
+            this.store = _data["store"] ? Store.fromJS(_data["store"]) : <any>undefined;
+            this.storeId = _data["storeId"];
+            this.submitDate = _data["submitDate"] ? moment(_data["submitDate"].toString()) : <any>undefined;
+            this.isEnabled = _data["isEnabled"];
+            this.isfavourite = _data["isfavourite"];
+            this.floorNumber = _data["floorNumber"];
+            this.sizeChartImage = _data["sizeChartImage"];
+            this.promotionMessageTime = _data["promotionMessageTime"] ? moment(_data["promotionMessageTime"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): GetAllDealsApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetAllDealsApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.sizesAvailable)) {
+            data["sizesAvailable"] = [];
+            for (let item of this.sizesAvailable)
+                data["sizesAvailable"].push(item.toJSON());
+        }
+        if (Array.isArray(this.colorsAvailable)) {
+            data["colorsAvailable"] = [];
+            for (let item of this.colorsAvailable)
+                data["colorsAvailable"].push(item.toJSON());
+        }
+        if (Array.isArray(this.itemVarianceColorSizes)) {
+            data["itemVarianceColorSizes"] = [];
+            for (let item of this.itemVarianceColorSizes)
+                data["itemVarianceColorSizes"].push(item.toJSON());
+        }
+        data["id"] = this.id;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        data["dealType"] = this.dealType;
+        data["startDate"] = this.startDate ? this.startDate.toISOString() : <any>undefined;
+        data["endDate"] = this.endDate ? this.endDate.toISOString() : <any>undefined;
+        if (Array.isArray(this.dealItemVariances)) {
+            data["dealItemVariances"] = [];
+            for (let item of this.dealItemVariances)
+                data["dealItemVariances"].push(item.toJSON());
+        }
+        data["item"] = this.item ? this.item.toJSON() : <any>undefined;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["dealTitle"] = this.dealTitle;
+        data["dealDescription"] = this.dealDescription;
+        if (Array.isArray(this.dealTags)) {
+            data["dealTags"] = [];
+            for (let item of this.dealTags)
+                data["dealTags"].push(item.toJSON());
+        }
+        data["discountType"] = this.discountType;
+        data["discountAmount"] = this.discountAmount;
+        data["totaPriceWithDiscount"] = this.totaPriceWithDiscount;
+        data["totaPriceWithoutDiscount"] = this.totaPriceWithoutDiscount;
+        if (Array.isArray(this.images)) {
+            data["images"] = [];
+            for (let item of this.images)
+                data["images"].push(item.toJSON());
+        }
+        data["status"] = this.status;
+        data["store"] = this.store ? this.store.toJSON() : <any>undefined;
+        data["storeId"] = this.storeId;
+        data["submitDate"] = this.submitDate ? this.submitDate.toISOString() : <any>undefined;
+        data["isEnabled"] = this.isEnabled;
+        data["isfavourite"] = this.isfavourite;
+        data["floorNumber"] = this.floorNumber;
+        data["sizeChartImage"] = this.sizeChartImage;
+        data["promotionMessageTime"] = this.promotionMessageTime ? this.promotionMessageTime.toISOString() : <any>undefined;
+        return data; 
+    }
 }
 
-export class Links extends LinkBase implements ILinks {
-  next?: LinkHref | undefined;
-  prev?: LinkHref | undefined;
-  first?: LinkHref | undefined;
-  last?: LinkHref | undefined;
-
-  constructor(data?: ILinks) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.next = _data["next"]
-        ? LinkHref.fromJS(_data["next"])
-        : <any>undefined;
-      this.prev = _data["prev"]
-        ? LinkHref.fromJS(_data["prev"])
-        : <any>undefined;
-      this.first = _data["first"]
-        ? LinkHref.fromJS(_data["first"])
-        : <any>undefined;
-      this.last = _data["last"]
-        ? LinkHref.fromJS(_data["last"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): Links {
-    data = typeof data === "object" ? data : {};
-    let result = new Links();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["next"] = this.next ? this.next.toJSON() : <any>undefined;
-    data["prev"] = this.prev ? this.prev.toJSON() : <any>undefined;
-    data["first"] = this.first ? this.first.toJSON() : <any>undefined;
-    data["last"] = this.last ? this.last.toJSON() : <any>undefined;
-    super.toJSON(data);
-    return data;
-  }
+export interface IGetAllDealsApiResponse {
+    sizesAvailable?: SizeGetApiModel[] | undefined;
+    colorsAvailable?: ColorGetApiModel[] | undefined;
+    itemVarianceColorSizes?: ItemVarianceColorSizeGetApiModel[] | undefined;
+    id: string;
+    createdAt: moment.Moment;
+    deletedAt?: moment.Moment | undefined;
+    dealType: DealType;
+    startDate?: moment.Moment | undefined;
+    endDate?: moment.Moment | undefined;
+    dealItemVariances?: DealItem[] | undefined;
+    item?: Item | undefined;
+    itemVarianceId: string;
+    dealTitle?: string | undefined;
+    dealDescription?: string | undefined;
+    dealTags?: DealTag[] | undefined;
+    discountType?: DealDiscountType | undefined;
+    discountAmount?: number | undefined;
+    totaPriceWithDiscount?: number | undefined;
+    totaPriceWithoutDiscount?: number | undefined;
+    images?: DealImage[] | undefined;
+    status: DealStatus;
+    store?: Store | undefined;
+    storeId?: string | undefined;
+    submitDate?: moment.Moment | undefined;
+    isEnabled: boolean;
+    isfavourite: boolean;
+    floorNumber?: string | undefined;
+    sizeChartImage?: string | undefined;
+    promotionMessageTime?: moment.Moment | undefined;
 }
 
-export interface ILinks extends ILinkBase {
-  next?: LinkHref | undefined;
-  prev?: LinkHref | undefined;
-  first?: LinkHref | undefined;
-  last?: LinkHref | undefined;
+export class SizeGetApiModel implements ISizeGetApiModel {
+    id!: number;
+    name?: string | undefined;
+    itemId?: string | undefined;
+    itemVarianceId?: string | undefined;
+
+    constructor(data?: ISizeGetApiModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.itemId = _data["itemId"];
+            this.itemVarianceId = _data["itemVarianceId"];
+        }
+    }
+
+    static fromJS(data: any): SizeGetApiModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new SizeGetApiModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["itemId"] = this.itemId;
+        data["itemVarianceId"] = this.itemVarianceId;
+        return data; 
+    }
 }
 
-export class LinkHref implements ILinkHref {
-  href?: string | undefined;
-
-  constructor(data?: ILinkHref) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.href = _data["href"];
-    }
-  }
-
-  static fromJS(data: any): LinkHref {
-    data = typeof data === "object" ? data : {};
-    let result = new LinkHref();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["href"] = this.href;
-    return data;
-  }
+export interface ISizeGetApiModel {
+    id: number;
+    name?: string | undefined;
+    itemId?: string | undefined;
+    itemVarianceId?: string | undefined;
 }
 
-export interface ILinkHref {
-  href?: string | undefined;
+export class ColorGetApiModel implements IColorGetApiModel {
+    id!: number;
+    name?: string | undefined;
+    itemId?: string | undefined;
+    itemVarianceId?: string | undefined;
+    image?: string | undefined;
+
+    constructor(data?: IColorGetApiModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.itemId = _data["itemId"];
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.image = _data["image"];
+        }
+    }
+
+    static fromJS(data: any): ColorGetApiModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new ColorGetApiModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["itemId"] = this.itemId;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["image"] = this.image;
+        return data; 
+    }
 }
 
-export class BadResponse implements IBadResponse {
-  errors?: BadResponseHolder[] | undefined;
-
-  constructor(data?: IBadResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["errors"])) {
-        this.errors = [] as any;
-        for (let item of _data["errors"])
-          this.errors!.push(BadResponseHolder.fromJS(item));
-      }
-    }
-  }
-
-  static fromJS(data: any): BadResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new BadResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.errors)) {
-      data["errors"] = [];
-      for (let item of this.errors) data["errors"].push(item.toJSON());
-    }
-    return data;
-  }
+export interface IColorGetApiModel {
+    id: number;
+    name?: string | undefined;
+    itemId?: string | undefined;
+    itemVarianceId?: string | undefined;
+    image?: string | undefined;
 }
 
-export interface IBadResponse {
-  errors?: BadResponseHolder[] | undefined;
+export class ItemVarianceColorSizeGetApiModel implements IItemVarianceColorSizeGetApiModel {
+    itemId!: string;
+    itemVarianceId!: string;
+    sizeId?: number | undefined;
+    sizeName?: string | undefined;
+    colorId?: number | undefined;
+    colorName?: string | undefined;
+    image?: string | undefined;
+    qty?: number | undefined;
+    price?: number | undefined;
+    priceDiscounted?: number | undefined;
+    position!: number;
+
+    constructor(data?: IItemVarianceColorSizeGetApiModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.itemId = _data["itemId"];
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.sizeId = _data["sizeId"];
+            this.sizeName = _data["sizeName"];
+            this.colorId = _data["colorId"];
+            this.colorName = _data["colorName"];
+            this.image = _data["image"];
+            this.qty = _data["qty"];
+            this.price = _data["price"];
+            this.priceDiscounted = _data["priceDiscounted"];
+            this.position = _data["position"];
+        }
+    }
+
+    static fromJS(data: any): ItemVarianceColorSizeGetApiModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new ItemVarianceColorSizeGetApiModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["itemId"] = this.itemId;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["sizeId"] = this.sizeId;
+        data["sizeName"] = this.sizeName;
+        data["colorId"] = this.colorId;
+        data["colorName"] = this.colorName;
+        data["image"] = this.image;
+        data["qty"] = this.qty;
+        data["price"] = this.price;
+        data["priceDiscounted"] = this.priceDiscounted;
+        data["position"] = this.position;
+        return data; 
+    }
 }
 
-export class BadResponseHolder implements IBadResponseHolder {
-  status!: number;
-  error?: string | undefined;
-
-  constructor(data?: IBadResponseHolder) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.status = _data["status"];
-      this.error = _data["error"];
-    }
-  }
-
-  static fromJS(data: any): BadResponseHolder {
-    data = typeof data === "object" ? data : {};
-    let result = new BadResponseHolder();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["status"] = this.status;
-    data["error"] = this.error;
-    return data;
-  }
+export interface IItemVarianceColorSizeGetApiModel {
+    itemId: string;
+    itemVarianceId: string;
+    sizeId?: number | undefined;
+    sizeName?: string | undefined;
+    colorId?: number | undefined;
+    colorName?: string | undefined;
+    image?: string | undefined;
+    qty?: number | undefined;
+    price?: number | undefined;
+    priceDiscounted?: number | undefined;
+    position: number;
 }
 
-export interface IBadResponseHolder {
-  status: number;
-  error?: string | undefined;
-}
-
-export class ErrorResponse implements IErrorResponse {
-  errors?: ErrorModel[] | undefined;
-
-  constructor(data?: IErrorResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["errors"])) {
-        this.errors = [] as any;
-        for (let item of _data["errors"])
-          this.errors!.push(ErrorModel.fromJS(item));
-      }
-    }
-  }
-
-  static fromJS(data: any): ErrorResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new ErrorResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.errors)) {
-      data["errors"] = [];
-      for (let item of this.errors) data["errors"].push(item.toJSON());
-    }
-    return data;
-  }
-}
-
-export interface IErrorResponse {
-  errors?: ErrorModel[] | undefined;
-}
-
-export class ErrorModel implements IErrorModel {
-  fieldName?: string | undefined;
-  message?: string | undefined;
-
-  constructor(data?: IErrorModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.fieldName = _data["fieldName"];
-      this.message = _data["message"];
-    }
-  }
-
-  static fromJS(data: any): ErrorModel {
-    data = typeof data === "object" ? data : {};
-    let result = new ErrorModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["fieldName"] = this.fieldName;
-    data["message"] = this.message;
-    return data;
-  }
-}
-
-export interface IErrorModel {
-  fieldName?: string | undefined;
-  message?: string | undefined;
-}
-
-export class ResponseOfCreateAddOnResponse
-  implements IResponseOfCreateAddOnResponse {
-  data?: CreateAddOnResponse | undefined;
-  _links?: LinkBase | undefined;
-
-  constructor(data?: IResponseOfCreateAddOnResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.data = _data["data"]
-        ? CreateAddOnResponse.fromJS(_data["data"])
-        : <any>undefined;
-      this._links = _data["_links"]
-        ? LinkBase.fromJS(_data["_links"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): ResponseOfCreateAddOnResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new ResponseOfCreateAddOnResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["data"] = this.data ? this.data.toJSON() : <any>undefined;
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IResponseOfCreateAddOnResponse {
-  data?: CreateAddOnResponse | undefined;
-  _links?: LinkBase | undefined;
-}
-
-export class CreateAddOnResponse implements ICreateAddOnResponse {
-  addOnListModels?: CreateAddOnListModel[] | undefined;
-
-  constructor(data?: ICreateAddOnResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["addOnListModels"])) {
-        this.addOnListModels = [] as any;
-        for (let item of _data["addOnListModels"])
-          this.addOnListModels!.push(CreateAddOnListModel.fromJS(item));
-      }
-    }
-  }
-
-  static fromJS(data: any): CreateAddOnResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new CreateAddOnResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.addOnListModels)) {
-      data["addOnListModels"] = [];
-      for (let item of this.addOnListModels)
-        data["addOnListModels"].push(item.toJSON());
-    }
-    return data;
-  }
-}
-
-export interface ICreateAddOnResponse {
-  addOnListModels?: CreateAddOnListModel[] | undefined;
-}
-
-export class CreateAddOnListModel implements ICreateAddOnListModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  price!: number;
-  isEnable?: boolean | undefined;
-
-  constructor(data?: ICreateAddOnListModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.price = _data["price"];
-      this.isEnable = _data["isEnable"];
-    }
-  }
-
-  static fromJS(data: any): CreateAddOnListModel {
-    data = typeof data === "object" ? data : {};
-    let result = new CreateAddOnListModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["price"] = this.price;
-    data["isEnable"] = this.isEnable;
-    return data;
-  }
-}
-
-export interface ICreateAddOnListModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  price: number;
-  isEnable?: boolean | undefined;
-}
-
-export class CreateAddOnRequest implements ICreateAddOnRequest {
-  id?: string | undefined;
-  name?: string | undefined;
-  price!: number;
-  isEnable?: boolean | undefined;
-  toppingModel?: ToppingModel | undefined;
-
-  constructor(data?: ICreateAddOnRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.price = _data["price"];
-      this.isEnable = _data["isEnable"];
-      this.toppingModel = _data["toppingModel"]
-        ? ToppingModel.fromJS(_data["toppingModel"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): CreateAddOnRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new CreateAddOnRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["price"] = this.price;
-    data["isEnable"] = this.isEnable;
-    data["toppingModel"] = this.toppingModel
-      ? this.toppingModel.toJSON()
-      : <any>undefined;
-    return data;
-  }
-}
-
-export interface ICreateAddOnRequest {
-  id?: string | undefined;
-  name?: string | undefined;
-  price: number;
-  isEnable?: boolean | undefined;
-  toppingModel?: ToppingModel | undefined;
-}
-
-export class BaseModel implements IBaseModel {
-  events?: BaseDomainEvent[] | undefined;
-  id!: number;
-
-  constructor(data?: IBaseModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["events"])) {
-        this.events = [] as any;
-        for (let item of _data["events"])
-          this.events!.push(BaseDomainEvent.fromJS(item));
-      }
-      this.id = _data["id"];
-    }
-  }
-
-  static fromJS(data: any): BaseModel {
-    data = typeof data === "object" ? data : {};
-    let result = new BaseModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.events)) {
-      data["events"] = [];
-      for (let item of this.events) data["events"].push(item.toJSON());
-    }
-    data["id"] = this.id;
-    return data;
-  }
-}
-
-export interface IBaseModel {
-  events?: BaseDomainEvent[] | undefined;
-  id: number;
-}
-
-export class ToppingModel extends BaseModel implements IToppingModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  price!: number;
-  isEnable?: boolean | undefined;
-  deletedAt?: moment.Moment | undefined;
-  restaurantId?: string | undefined;
-  addonCategories?: AddonCategoryModel[] | undefined;
-
-  constructor(data?: IToppingModel) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.price = _data["price"];
-      this.isEnable = _data["isEnable"];
-      this.deletedAt = _data["deletedAt"]
-        ? moment(_data["deletedAt"].toString())
-        : <any>undefined;
-      this.restaurantId = _data["restaurantId"];
-      if (Array.isArray(_data["addonCategories"])) {
-        this.addonCategories = [] as any;
-        for (let item of _data["addonCategories"])
-          this.addonCategories!.push(AddonCategoryModel.fromJS(item));
-      }
-    }
-  }
-
-  static fromJS(data: any): ToppingModel {
-    data = typeof data === "object" ? data : {};
-    let result = new ToppingModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["price"] = this.price;
-    data["isEnable"] = this.isEnable;
-    data["deletedAt"] = this.deletedAt
-      ? this.deletedAt.toISOString()
-      : <any>undefined;
-    data["restaurantId"] = this.restaurantId;
-    if (Array.isArray(this.addonCategories)) {
-      data["addonCategories"] = [];
-      for (let item of this.addonCategories)
-        data["addonCategories"].push(item.toJSON());
-    }
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IToppingModel extends IBaseModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  price: number;
-  isEnable?: boolean | undefined;
-  deletedAt?: moment.Moment | undefined;
-  restaurantId?: string | undefined;
-  addonCategories?: AddonCategoryModel[] | undefined;
-}
-
-export class AddonCategoryModel
-  extends BaseModel
-  implements IAddonCategoryModel {
-  id?: string | undefined;
-  toppingId?: string | undefined;
-  topping?: ToppingModel | undefined;
-  categoryId?: string | undefined;
-  category?: CategoryModel | undefined;
-
-  constructor(data?: IAddonCategoryModel) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.id = _data["id"];
-      this.toppingId = _data["toppingId"];
-      this.topping = _data["topping"]
-        ? ToppingModel.fromJS(_data["topping"])
-        : <any>undefined;
-      this.categoryId = _data["categoryId"];
-      this.category = _data["category"]
-        ? CategoryModel.fromJS(_data["category"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): AddonCategoryModel {
-    data = typeof data === "object" ? data : {};
-    let result = new AddonCategoryModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["toppingId"] = this.toppingId;
-    data["topping"] = this.topping ? this.topping.toJSON() : <any>undefined;
-    data["categoryId"] = this.categoryId;
-    data["category"] = this.category ? this.category.toJSON() : <any>undefined;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IAddonCategoryModel extends IBaseModel {
-  id?: string | undefined;
-  toppingId?: string | undefined;
-  topping?: ToppingModel | undefined;
-  categoryId?: string | undefined;
-  category?: CategoryModel | undefined;
-}
-
-export class CategoryModel implements ICategoryModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  shortDescription?: string | undefined;
-  longDescription?: string | undefined;
-  imagePath?: string | undefined;
-  restaurantId?: string | undefined;
-  isEnable?: boolean | undefined;
-  displayOrder?: number | undefined;
-  deleteAt?: moment.Moment | undefined;
-  availableFrom?: moment.Moment | undefined;
-  availableTo?: moment.Moment | undefined;
-  products?: ProductListModel[] | undefined;
-  image?: MemoryStream | undefined;
-  portionIds?: number[] | undefined;
-  categoryAvailabilityModels?: CategoryAvailabilityModel[] | undefined;
-
-  constructor(data?: ICategoryModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.shortDescription = _data["shortDescription"];
-      this.longDescription = _data["longDescription"];
-      this.imagePath = _data["imagePath"];
-      this.restaurantId = _data["restaurantId"];
-      this.isEnable = _data["isEnable"];
-      this.displayOrder = _data["displayOrder"];
-      this.deleteAt = _data["deleteAt"]
-        ? moment(_data["deleteAt"].toString())
-        : <any>undefined;
-      this.availableFrom = _data["availableFrom"]
-        ? moment(_data["availableFrom"].toString())
-        : <any>undefined;
-      this.availableTo = _data["availableTo"]
-        ? moment(_data["availableTo"].toString())
-        : <any>undefined;
-      if (Array.isArray(_data["products"])) {
-        this.products = [] as any;
-        for (let item of _data["products"])
-          this.products!.push(ProductListModel.fromJS(item));
-      }
-      this.image = _data["image"]
-        ? MemoryStream.fromJS(_data["image"])
-        : <any>undefined;
-      if (Array.isArray(_data["portionIds"])) {
-        this.portionIds = [] as any;
-        for (let item of _data["portionIds"]) this.portionIds!.push(item);
-      }
-      if (Array.isArray(_data["categoryAvailabilityModels"])) {
-        this.categoryAvailabilityModels = [] as any;
-        for (let item of _data["categoryAvailabilityModels"])
-          this.categoryAvailabilityModels!.push(
-            CategoryAvailabilityModel.fromJS(item)
-          );
-      }
-    }
-  }
-
-  static fromJS(data: any): CategoryModel {
-    data = typeof data === "object" ? data : {};
-    let result = new CategoryModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["shortDescription"] = this.shortDescription;
-    data["longDescription"] = this.longDescription;
-    data["imagePath"] = this.imagePath;
-    data["restaurantId"] = this.restaurantId;
-    data["isEnable"] = this.isEnable;
-    data["displayOrder"] = this.displayOrder;
-    data["deleteAt"] = this.deleteAt
-      ? this.deleteAt.toISOString()
-      : <any>undefined;
-    data["availableFrom"] = this.availableFrom
-      ? this.availableFrom.toISOString()
-      : <any>undefined;
-    data["availableTo"] = this.availableTo
-      ? this.availableTo.toISOString()
-      : <any>undefined;
-    if (Array.isArray(this.products)) {
-      data["products"] = [];
-      for (let item of this.products) data["products"].push(item.toJSON());
-    }
-    data["image"] = this.image ? this.image.toJSON() : <any>undefined;
-    if (Array.isArray(this.portionIds)) {
-      data["portionIds"] = [];
-      for (let item of this.portionIds) data["portionIds"].push(item);
-    }
-    if (Array.isArray(this.categoryAvailabilityModels)) {
-      data["categoryAvailabilityModels"] = [];
-      for (let item of this.categoryAvailabilityModels)
-        data["categoryAvailabilityModels"].push(item.toJSON());
-    }
-    return data;
-  }
-}
-
-export interface ICategoryModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  shortDescription?: string | undefined;
-  longDescription?: string | undefined;
-  imagePath?: string | undefined;
-  restaurantId?: string | undefined;
-  isEnable?: boolean | undefined;
-  displayOrder?: number | undefined;
-  deleteAt?: moment.Moment | undefined;
-  availableFrom?: moment.Moment | undefined;
-  availableTo?: moment.Moment | undefined;
-  products?: ProductListModel[] | undefined;
-  image?: MemoryStream | undefined;
-  portionIds?: number[] | undefined;
-  categoryAvailabilityModels?: CategoryAvailabilityModel[] | undefined;
-}
-
-export class ProductListModel implements IProductListModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  description?: string | undefined;
-  summary?: string | undefined;
-  ingredient?: string | undefined;
-  unitPrice?: number | undefined;
-  offerPrice?: number | undefined;
-  toppingPrice?: number | undefined;
-  rate?: number | undefined;
-  categoryId?: string | undefined;
-  isEnable!: boolean;
-  isParent!: boolean;
-  isAddon!: boolean;
-  parentId?: string | undefined;
-  mainImage?: string | undefined;
-  portionSizeId?: string | undefined;
-  toppingId!: string;
-  deleteAt?: moment.Moment | undefined;
-  category?: Category | undefined;
-  portionSize?: CategoryPortion | undefined;
-  topping?: Topping | undefined;
-  categoryPortionModels?: CategoryPortionModel[] | undefined;
-  toppings?: Topping[] | undefined;
-  isSoldOut!: boolean;
-  isDeliverable!: boolean;
-
-  constructor(data?: IProductListModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.description = _data["description"];
-      this.summary = _data["summary"];
-      this.ingredient = _data["ingredient"];
-      this.unitPrice = _data["unitPrice"];
-      this.offerPrice = _data["offerPrice"];
-      this.toppingPrice = _data["toppingPrice"];
-      this.rate = _data["rate"];
-      this.categoryId = _data["categoryId"];
-      this.isEnable = _data["isEnable"];
-      this.isParent = _data["isParent"];
-      this.isAddon = _data["isAddon"];
-      this.parentId = _data["parentId"];
-      this.mainImage = _data["mainImage"];
-      this.portionSizeId = _data["portionSizeId"];
-      this.toppingId = _data["toppingId"];
-      this.deleteAt = _data["deleteAt"]
-        ? moment(_data["deleteAt"].toString())
-        : <any>undefined;
-      this.category = _data["category"]
-        ? Category.fromJS(_data["category"])
-        : <any>undefined;
-      this.portionSize = _data["portionSize"]
-        ? CategoryPortion.fromJS(_data["portionSize"])
-        : <any>undefined;
-      this.topping = _data["topping"]
-        ? Topping.fromJS(_data["topping"])
-        : <any>undefined;
-      if (Array.isArray(_data["categoryPortionModels"])) {
-        this.categoryPortionModels = [] as any;
-        for (let item of _data["categoryPortionModels"])
-          this.categoryPortionModels!.push(CategoryPortionModel.fromJS(item));
-      }
-      if (Array.isArray(_data["toppings"])) {
-        this.toppings = [] as any;
-        for (let item of _data["toppings"])
-          this.toppings!.push(Topping.fromJS(item));
-      }
-      this.isSoldOut = _data["isSoldOut"];
-      this.isDeliverable = _data["isDeliverable"];
-    }
-  }
-
-  static fromJS(data: any): ProductListModel {
-    data = typeof data === "object" ? data : {};
-    let result = new ProductListModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["description"] = this.description;
-    data["summary"] = this.summary;
-    data["ingredient"] = this.ingredient;
-    data["unitPrice"] = this.unitPrice;
-    data["offerPrice"] = this.offerPrice;
-    data["toppingPrice"] = this.toppingPrice;
-    data["rate"] = this.rate;
-    data["categoryId"] = this.categoryId;
-    data["isEnable"] = this.isEnable;
-    data["isParent"] = this.isParent;
-    data["isAddon"] = this.isAddon;
-    data["parentId"] = this.parentId;
-    data["mainImage"] = this.mainImage;
-    data["portionSizeId"] = this.portionSizeId;
-    data["toppingId"] = this.toppingId;
-    data["deleteAt"] = this.deleteAt
-      ? this.deleteAt.toISOString()
-      : <any>undefined;
-    data["category"] = this.category ? this.category.toJSON() : <any>undefined;
-    data["portionSize"] = this.portionSize
-      ? this.portionSize.toJSON()
-      : <any>undefined;
-    data["topping"] = this.topping ? this.topping.toJSON() : <any>undefined;
-    if (Array.isArray(this.categoryPortionModels)) {
-      data["categoryPortionModels"] = [];
-      for (let item of this.categoryPortionModels)
-        data["categoryPortionModels"].push(item.toJSON());
-    }
-    if (Array.isArray(this.toppings)) {
-      data["toppings"] = [];
-      for (let item of this.toppings) data["toppings"].push(item.toJSON());
-    }
-    data["isSoldOut"] = this.isSoldOut;
-    data["isDeliverable"] = this.isDeliverable;
-    return data;
-  }
-}
-
-export interface IProductListModel {
-  id?: string | undefined;
-  name?: string | undefined;
-  description?: string | undefined;
-  summary?: string | undefined;
-  ingredient?: string | undefined;
-  unitPrice?: number | undefined;
-  offerPrice?: number | undefined;
-  toppingPrice?: number | undefined;
-  rate?: number | undefined;
-  categoryId?: string | undefined;
-  isEnable: boolean;
-  isParent: boolean;
-  isAddon: boolean;
-  parentId?: string | undefined;
-  mainImage?: string | undefined;
-  portionSizeId?: string | undefined;
-  toppingId: string;
-  deleteAt?: moment.Moment | undefined;
-  category?: Category | undefined;
-  portionSize?: CategoryPortion | undefined;
-  topping?: Topping | undefined;
-  categoryPortionModels?: CategoryPortionModel[] | undefined;
-  toppings?: Topping[] | undefined;
-  isSoldOut: boolean;
-  isDeliverable: boolean;
+export enum DealType {
+    Standard_Deal = 1,
+    Live_Deal = 2,
+    VIP_Deal = 3,
 }
 
 export abstract class EntityBaseOfGuid implements IEntityBaseOfGuid {
-  events?: BaseDomainEvent[] | undefined;
-  id!: string;
-  createdBy?: string | undefined;
-  lastModifiedBy?: string | undefined;
-  createdAt!: moment.Moment;
-  lastModifiedAt?: moment.Moment | undefined;
+    events?: BaseDomainEvent[] | undefined;
+    id!: string;
+    createdBy?: string | undefined;
+    lastModifiedBy?: string | undefined;
+    createdAt!: moment.Moment;
+    lastModifiedAt?: moment.Moment | undefined;
 
-  constructor(data?: IEntityBaseOfGuid) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
+    constructor(data?: IEntityBaseOfGuid) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
     }
-  }
 
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["events"])) {
-        this.events = [] as any;
-        for (let item of _data["events"])
-          this.events!.push(BaseDomainEvent.fromJS(item));
-      }
-      this.id = _data["id"];
-      this.createdBy = _data["createdBy"];
-      this.lastModifiedBy = _data["lastModifiedBy"];
-      this.createdAt = _data["createdAt"]
-        ? moment(_data["createdAt"].toString())
-        : <any>undefined;
-      this.lastModifiedAt = _data["lastModifiedAt"]
-        ? moment(_data["lastModifiedAt"].toString())
-        : <any>undefined;
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["events"])) {
+                this.events = [] as any;
+                for (let item of _data["events"])
+                    this.events!.push(BaseDomainEvent.fromJS(item));
+            }
+            this.id = _data["id"];
+            this.createdBy = _data["createdBy"];
+            this.lastModifiedBy = _data["lastModifiedBy"];
+            this.createdAt = _data["createdAt"] ? moment(_data["createdAt"].toString()) : <any>undefined;
+            this.lastModifiedAt = _data["lastModifiedAt"] ? moment(_data["lastModifiedAt"].toString()) : <any>undefined;
+        }
     }
-  }
 
-  static fromJS(data: any): EntityBaseOfGuid {
-    data = typeof data === "object" ? data : {};
-    throw new Error(
-      "The abstract class 'EntityBaseOfGuid' cannot be instantiated."
-    );
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.events)) {
-      data["events"] = [];
-      for (let item of this.events) data["events"].push(item.toJSON());
+    static fromJS(data: any): EntityBaseOfGuid {
+        data = typeof data === 'object' ? data : {};
+        throw new Error("The abstract class 'EntityBaseOfGuid' cannot be instantiated.");
     }
-    data["id"] = this.id;
-    data["createdBy"] = this.createdBy;
-    data["lastModifiedBy"] = this.lastModifiedBy;
-    data["createdAt"] = this.createdAt
-      ? this.createdAt.toISOString()
-      : <any>undefined;
-    data["lastModifiedAt"] = this.lastModifiedAt
-      ? this.lastModifiedAt.toISOString()
-      : <any>undefined;
-    return data;
-  }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.events)) {
+            data["events"] = [];
+            for (let item of this.events)
+                data["events"].push(item.toJSON());
+        }
+        data["id"] = this.id;
+        data["createdBy"] = this.createdBy;
+        data["lastModifiedBy"] = this.lastModifiedBy;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        data["lastModifiedAt"] = this.lastModifiedAt ? this.lastModifiedAt.toISOString() : <any>undefined;
+        return data; 
+    }
 }
 
 export interface IEntityBaseOfGuid {
-  events?: BaseDomainEvent[] | undefined;
-  id: string;
-  createdBy?: string | undefined;
-  lastModifiedBy?: string | undefined;
-  createdAt: moment.Moment;
-  lastModifiedAt?: moment.Moment | undefined;
+    events?: BaseDomainEvent[] | undefined;
+    id: string;
+    createdBy?: string | undefined;
+    lastModifiedBy?: string | undefined;
+    createdAt: moment.Moment;
+    lastModifiedAt?: moment.Moment | undefined;
 }
 
-export class Category extends EntityBaseOfGuid implements ICategory {
-  name?: string | undefined;
-  shortDescription?: string | undefined;
-  longDescription?: string | undefined;
-  imagePath?: string | undefined;
-  restaurantId!: string;
-  isEnable!: boolean;
-  deleteAt?: moment.Moment | undefined;
-  availableFrom?: moment.Moment | undefined;
-  availableTo?: moment.Moment | undefined;
-  restaurant?: Restaurant | undefined;
-  products?: Product[] | undefined;
-  categoryAvailabilities?: CategoryAvailability[] | undefined;
-  displayOrder?: number | undefined;
-  tenantId?: string | undefined;
+export class DealItem extends EntityBaseOfGuid implements IDealItem {
+    itemVariance?: ItemVarience | undefined;
+    itemVarianceId!: string;
+    deal?: Deal | undefined;
+    dealId!: string;
 
-  constructor(data?: ICategory) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.name = _data["name"];
-      this.shortDescription = _data["shortDescription"];
-      this.longDescription = _data["longDescription"];
-      this.imagePath = _data["imagePath"];
-      this.restaurantId = _data["restaurantId"];
-      this.isEnable = _data["isEnable"];
-      this.deleteAt = _data["deleteAt"]
-        ? moment(_data["deleteAt"].toString())
-        : <any>undefined;
-      this.availableFrom = _data["availableFrom"]
-        ? moment(_data["availableFrom"].toString())
-        : <any>undefined;
-      this.availableTo = _data["availableTo"]
-        ? moment(_data["availableTo"].toString())
-        : <any>undefined;
-      this.restaurant = _data["restaurant"]
-        ? Restaurant.fromJS(_data["restaurant"])
-        : <any>undefined;
-      if (Array.isArray(_data["products"])) {
-        this.products = [] as any;
-        for (let item of _data["products"])
-          this.products!.push(Product.fromJS(item));
-      }
-      if (Array.isArray(_data["categoryAvailabilities"])) {
-        this.categoryAvailabilities = [] as any;
-        for (let item of _data["categoryAvailabilities"])
-          this.categoryAvailabilities!.push(CategoryAvailability.fromJS(item));
-      }
-      this.displayOrder = _data["displayOrder"];
-      this.tenantId = _data["tenantId"];
+    constructor(data?: IDealItem) {
+        super(data);
     }
-  }
 
-  static fromJS(data: any): Category {
-    data = typeof data === "object" ? data : {};
-    let result = new Category();
-    result.init(data);
-    return result;
-  }
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.itemVariance = _data["itemVariance"] ? ItemVarience.fromJS(_data["itemVariance"]) : <any>undefined;
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.deal = _data["deal"] ? Deal.fromJS(_data["deal"]) : <any>undefined;
+            this.dealId = _data["dealId"];
+        }
+    }
 
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["name"] = this.name;
-    data["shortDescription"] = this.shortDescription;
-    data["longDescription"] = this.longDescription;
-    data["imagePath"] = this.imagePath;
-    data["restaurantId"] = this.restaurantId;
-    data["isEnable"] = this.isEnable;
-    data["deleteAt"] = this.deleteAt
-      ? this.deleteAt.toISOString()
-      : <any>undefined;
-    data["availableFrom"] = this.availableFrom
-      ? this.availableFrom.toISOString()
-      : <any>undefined;
-    data["availableTo"] = this.availableTo
-      ? this.availableTo.toISOString()
-      : <any>undefined;
-    data["restaurant"] = this.restaurant
-      ? this.restaurant.toJSON()
-      : <any>undefined;
-    if (Array.isArray(this.products)) {
-      data["products"] = [];
-      for (let item of this.products) data["products"].push(item.toJSON());
+    static fromJS(data: any): DealItem {
+        data = typeof data === 'object' ? data : {};
+        let result = new DealItem();
+        result.init(data);
+        return result;
     }
-    if (Array.isArray(this.categoryAvailabilities)) {
-      data["categoryAvailabilities"] = [];
-      for (let item of this.categoryAvailabilities)
-        data["categoryAvailabilities"].push(item.toJSON());
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["itemVariance"] = this.itemVariance ? this.itemVariance.toJSON() : <any>undefined;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["deal"] = this.deal ? this.deal.toJSON() : <any>undefined;
+        data["dealId"] = this.dealId;
+        super.toJSON(data);
+        return data; 
     }
-    data["displayOrder"] = this.displayOrder;
-    data["tenantId"] = this.tenantId;
-    super.toJSON(data);
-    return data;
-  }
 }
 
-export interface ICategory extends IEntityBaseOfGuid {
-  name?: string | undefined;
-  shortDescription?: string | undefined;
-  longDescription?: string | undefined;
-  imagePath?: string | undefined;
-  restaurantId: string;
-  isEnable: boolean;
-  deleteAt?: moment.Moment | undefined;
-  availableFrom?: moment.Moment | undefined;
-  availableTo?: moment.Moment | undefined;
-  restaurant?: Restaurant | undefined;
-  products?: Product[] | undefined;
-  categoryAvailabilities?: CategoryAvailability[] | undefined;
-  displayOrder?: number | undefined;
-  tenantId?: string | undefined;
+export interface IDealItem extends IEntityBaseOfGuid {
+    itemVariance?: ItemVarience | undefined;
+    itemVarianceId: string;
+    deal?: Deal | undefined;
+    dealId: string;
 }
 
-export class Restaurant extends EntityBaseOfGuid implements IRestaurant {
-  userId?: number | undefined;
-  user?: User | undefined;
-  name?: string | undefined;
-  phoneNo?: string | undefined;
-  address?: string | undefined;
-  postalCode?: string | undefined;
-  email?: string | undefined;
-  image?: string | undefined;
-  stripePublicKey?: string | undefined;
-  stripePrivateKey?: string | undefined;
-  categories?: Category[] | undefined;
-  paymentOptions?: PaymentOption[] | undefined;
-  tenantId?: string | undefined;
+export class ItemVarience extends EntityBaseOfGuid implements IItemVarience {
+    item?: Item | undefined;
+    itemId!: string;
+    deletedAt?: moment.Moment | undefined;
+    isEnabled!: boolean;
+    price?: number | undefined;
+    quantityType!: ItemQuantityType;
+    quantity?: number | undefined;
+    color?: Color | undefined;
+    colorId?: number | undefined;
+    size?: Size | undefined;
+    sizeId?: number | undefined;
+    position!: number;
+    images?: ItemVarienceOtherImage[] | undefined;
+    skuCode?: string | undefined;
 
-  constructor(data?: IRestaurant) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.userId = _data["userId"];
-      this.user = _data["user"] ? User.fromJS(_data["user"]) : <any>undefined;
-      this.name = _data["name"];
-      this.phoneNo = _data["phoneNo"];
-      this.address = _data["address"];
-      this.postalCode = _data["postalCode"];
-      this.email = _data["email"];
-      this.image = _data["image"];
-      this.stripePublicKey = _data["stripePublicKey"];
-      this.stripePrivateKey = _data["stripePrivateKey"];
-      if (Array.isArray(_data["categories"])) {
-        this.categories = [] as any;
-        for (let item of _data["categories"])
-          this.categories!.push(Category.fromJS(item));
-      }
-      if (Array.isArray(_data["paymentOptions"])) {
-        this.paymentOptions = [] as any;
-        for (let item of _data["paymentOptions"])
-          this.paymentOptions!.push(PaymentOption.fromJS(item));
-      }
-      this.tenantId = _data["tenantId"];
+    constructor(data?: IItemVarience) {
+        super(data);
     }
-  }
 
-  static fromJS(data: any): Restaurant {
-    data = typeof data === "object" ? data : {};
-    let result = new Restaurant();
-    result.init(data);
-    return result;
-  }
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.item = _data["item"] ? Item.fromJS(_data["item"]) : <any>undefined;
+            this.itemId = _data["itemId"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            this.isEnabled = _data["isEnabled"];
+            this.price = _data["price"];
+            this.quantityType = _data["quantityType"];
+            this.quantity = _data["quantity"];
+            this.color = _data["color"] ? Color.fromJS(_data["color"]) : <any>undefined;
+            this.colorId = _data["colorId"];
+            this.size = _data["size"] ? Size.fromJS(_data["size"]) : <any>undefined;
+            this.sizeId = _data["sizeId"];
+            this.position = _data["position"];
+            if (Array.isArray(_data["images"])) {
+                this.images = [] as any;
+                for (let item of _data["images"])
+                    this.images!.push(ItemVarienceOtherImage.fromJS(item));
+            }
+            this.skuCode = _data["skuCode"];
+        }
+    }
 
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["userId"] = this.userId;
-    data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-    data["name"] = this.name;
-    data["phoneNo"] = this.phoneNo;
-    data["address"] = this.address;
-    data["postalCode"] = this.postalCode;
-    data["email"] = this.email;
-    data["image"] = this.image;
-    data["stripePublicKey"] = this.stripePublicKey;
-    data["stripePrivateKey"] = this.stripePrivateKey;
-    if (Array.isArray(this.categories)) {
-      data["categories"] = [];
-      for (let item of this.categories) data["categories"].push(item.toJSON());
+    static fromJS(data: any): ItemVarience {
+        data = typeof data === 'object' ? data : {};
+        let result = new ItemVarience();
+        result.init(data);
+        return result;
     }
-    if (Array.isArray(this.paymentOptions)) {
-      data["paymentOptions"] = [];
-      for (let item of this.paymentOptions)
-        data["paymentOptions"].push(item.toJSON());
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["item"] = this.item ? this.item.toJSON() : <any>undefined;
+        data["itemId"] = this.itemId;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        data["isEnabled"] = this.isEnabled;
+        data["price"] = this.price;
+        data["quantityType"] = this.quantityType;
+        data["quantity"] = this.quantity;
+        data["color"] = this.color ? this.color.toJSON() : <any>undefined;
+        data["colorId"] = this.colorId;
+        data["size"] = this.size ? this.size.toJSON() : <any>undefined;
+        data["sizeId"] = this.sizeId;
+        data["position"] = this.position;
+        if (Array.isArray(this.images)) {
+            data["images"] = [];
+            for (let item of this.images)
+                data["images"].push(item.toJSON());
+        }
+        data["skuCode"] = this.skuCode;
+        super.toJSON(data);
+        return data; 
     }
-    data["tenantId"] = this.tenantId;
-    super.toJSON(data);
-    return data;
-  }
 }
 
-export interface IRestaurant extends IEntityBaseOfGuid {
-  userId?: number | undefined;
-  user?: User | undefined;
-  name?: string | undefined;
-  phoneNo?: string | undefined;
-  address?: string | undefined;
-  postalCode?: string | undefined;
-  email?: string | undefined;
-  image?: string | undefined;
-  stripePublicKey?: string | undefined;
-  stripePrivateKey?: string | undefined;
-  categories?: Category[] | undefined;
-  paymentOptions?: PaymentOption[] | undefined;
-  tenantId?: string | undefined;
+export interface IItemVarience extends IEntityBaseOfGuid {
+    item?: Item | undefined;
+    itemId: string;
+    deletedAt?: moment.Moment | undefined;
+    isEnabled: boolean;
+    price?: number | undefined;
+    quantityType: ItemQuantityType;
+    quantity?: number | undefined;
+    color?: Color | undefined;
+    colorId?: number | undefined;
+    size?: Size | undefined;
+    sizeId?: number | undefined;
+    position: number;
+    images?: ItemVarienceOtherImage[] | undefined;
+    skuCode?: string | undefined;
 }
 
-export abstract class EntityBaseOfInteger implements IEntityBaseOfInteger {
-  events?: BaseDomainEvent[] | undefined;
-  id!: number;
-  createdBy?: string | undefined;
-  lastModifiedBy?: string | undefined;
-  createdAt!: moment.Moment;
-  lastModifiedAt?: moment.Moment | undefined;
+export class Item extends EntityBaseOfGuid implements IItem {
+    itemTitle?: string | undefined;
+    itemDescription?: string | undefined;
+    tags?: ItemTag[] | undefined;
+    store?: Store | undefined;
+    storeId!: string;
+    itemValue!: number;
+    itemVarience?: ItemVarience[] | undefined;
+    deletedAt?: moment.Moment | undefined;
+    mainImage?: string | undefined;
+    isEnabledGST!: boolean;
+    isItemVarient!: boolean;
+    images?: ItemotherImage[] | undefined;
+    isApproved?: boolean | undefined;
+    isEnabled!: boolean;
+    mainImageType?: string | undefined;
 
-  constructor(data?: IEntityBaseOfInteger) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
+    constructor(data?: IItem) {
+        super(data);
     }
-  }
 
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["events"])) {
-        this.events = [] as any;
-        for (let item of _data["events"])
-          this.events!.push(BaseDomainEvent.fromJS(item));
-      }
-      this.id = _data["id"];
-      this.createdBy = _data["createdBy"];
-      this.lastModifiedBy = _data["lastModifiedBy"];
-      this.createdAt = _data["createdAt"]
-        ? moment(_data["createdAt"].toString())
-        : <any>undefined;
-      this.lastModifiedAt = _data["lastModifiedAt"]
-        ? moment(_data["lastModifiedAt"].toString())
-        : <any>undefined;
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.itemTitle = _data["itemTitle"];
+            this.itemDescription = _data["itemDescription"];
+            if (Array.isArray(_data["tags"])) {
+                this.tags = [] as any;
+                for (let item of _data["tags"])
+                    this.tags!.push(ItemTag.fromJS(item));
+            }
+            this.store = _data["store"] ? Store.fromJS(_data["store"]) : <any>undefined;
+            this.storeId = _data["storeId"];
+            this.itemValue = _data["itemValue"];
+            if (Array.isArray(_data["itemVarience"])) {
+                this.itemVarience = [] as any;
+                for (let item of _data["itemVarience"])
+                    this.itemVarience!.push(ItemVarience.fromJS(item));
+            }
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            this.mainImage = _data["mainImage"];
+            this.isEnabledGST = _data["isEnabledGST"];
+            this.isItemVarient = _data["isItemVarient"];
+            if (Array.isArray(_data["images"])) {
+                this.images = [] as any;
+                for (let item of _data["images"])
+                    this.images!.push(ItemotherImage.fromJS(item));
+            }
+            this.isApproved = _data["isApproved"];
+            this.isEnabled = _data["isEnabled"];
+            this.mainImageType = _data["mainImageType"];
+        }
     }
-  }
 
-  static fromJS(data: any): EntityBaseOfInteger {
-    data = typeof data === "object" ? data : {};
-    throw new Error(
-      "The abstract class 'EntityBaseOfInteger' cannot be instantiated."
-    );
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.events)) {
-      data["events"] = [];
-      for (let item of this.events) data["events"].push(item.toJSON());
+    static fromJS(data: any): Item {
+        data = typeof data === 'object' ? data : {};
+        let result = new Item();
+        result.init(data);
+        return result;
     }
-    data["id"] = this.id;
-    data["createdBy"] = this.createdBy;
-    data["lastModifiedBy"] = this.lastModifiedBy;
-    data["createdAt"] = this.createdAt
-      ? this.createdAt.toISOString()
-      : <any>undefined;
-    data["lastModifiedAt"] = this.lastModifiedAt
-      ? this.lastModifiedAt.toISOString()
-      : <any>undefined;
-    return data;
-  }
-}
 
-export interface IEntityBaseOfInteger {
-  events?: BaseDomainEvent[] | undefined;
-  id: number;
-  createdBy?: string | undefined;
-  lastModifiedBy?: string | undefined;
-  createdAt: moment.Moment;
-  lastModifiedAt?: moment.Moment | undefined;
-}
-
-export class User extends EntityBaseOfInteger implements IUser {
-  identityId?: string | undefined;
-  firstName?: string | undefined;
-  lastName?: string | undefined;
-  address?: string | undefined;
-  phoneNumber?: string | undefined;
-  postalCode?: string | undefined;
-  email?: string | undefined;
-  wishLists?: WishList[] | undefined;
-
-  constructor(data?: IUser) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.identityId = _data["identityId"];
-      this.firstName = _data["firstName"];
-      this.lastName = _data["lastName"];
-      this.address = _data["address"];
-      this.phoneNumber = _data["phoneNumber"];
-      this.postalCode = _data["postalCode"];
-      this.email = _data["email"];
-      if (Array.isArray(_data["wishLists"])) {
-        this.wishLists = [] as any;
-        for (let item of _data["wishLists"])
-          this.wishLists!.push(WishList.fromJS(item));
-      }
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["itemTitle"] = this.itemTitle;
+        data["itemDescription"] = this.itemDescription;
+        if (Array.isArray(this.tags)) {
+            data["tags"] = [];
+            for (let item of this.tags)
+                data["tags"].push(item.toJSON());
+        }
+        data["store"] = this.store ? this.store.toJSON() : <any>undefined;
+        data["storeId"] = this.storeId;
+        data["itemValue"] = this.itemValue;
+        if (Array.isArray(this.itemVarience)) {
+            data["itemVarience"] = [];
+            for (let item of this.itemVarience)
+                data["itemVarience"].push(item.toJSON());
+        }
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        data["mainImage"] = this.mainImage;
+        data["isEnabledGST"] = this.isEnabledGST;
+        data["isItemVarient"] = this.isItemVarient;
+        if (Array.isArray(this.images)) {
+            data["images"] = [];
+            for (let item of this.images)
+                data["images"].push(item.toJSON());
+        }
+        data["isApproved"] = this.isApproved;
+        data["isEnabled"] = this.isEnabled;
+        data["mainImageType"] = this.mainImageType;
+        super.toJSON(data);
+        return data; 
     }
-  }
+}
 
-  static fromJS(data: any): User {
-    data = typeof data === "object" ? data : {};
-    let result = new User();
-    result.init(data);
-    return result;
-  }
+export interface IItem extends IEntityBaseOfGuid {
+    itemTitle?: string | undefined;
+    itemDescription?: string | undefined;
+    tags?: ItemTag[] | undefined;
+    store?: Store | undefined;
+    storeId: string;
+    itemValue: number;
+    itemVarience?: ItemVarience[] | undefined;
+    deletedAt?: moment.Moment | undefined;
+    mainImage?: string | undefined;
+    isEnabledGST: boolean;
+    isItemVarient: boolean;
+    images?: ItemotherImage[] | undefined;
+    isApproved?: boolean | undefined;
+    isEnabled: boolean;
+    mainImageType?: string | undefined;
+}
 
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["identityId"] = this.identityId;
-    data["firstName"] = this.firstName;
-    data["lastName"] = this.lastName;
-    data["address"] = this.address;
-    data["phoneNumber"] = this.phoneNumber;
-    data["postalCode"] = this.postalCode;
-    data["email"] = this.email;
-    if (Array.isArray(this.wishLists)) {
-      data["wishLists"] = [];
-      for (let item of this.wishLists) data["wishLists"].push(item.toJSON());
+export class ItemTag implements IItemTag {
+    tag?: Tag | undefined;
+    tagId!: string;
+    item?: Item | undefined;
+    itemId!: string;
+
+    constructor(data?: IItemTag) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
     }
-    super.toJSON(data);
-    return data;
-  }
-}
 
-export interface IUser extends IEntityBaseOfInteger {
-  identityId?: string | undefined;
-  firstName?: string | undefined;
-  lastName?: string | undefined;
-  address?: string | undefined;
-  phoneNumber?: string | undefined;
-  postalCode?: string | undefined;
-  email?: string | undefined;
-  wishLists?: WishList[] | undefined;
-}
-
-export class WishList extends EntityBaseOfInteger implements IWishList {
-  restaurantId!: string;
-  userId?: string | undefined;
-  productId!: string;
-  product?: Product | undefined;
-  user?: User | undefined;
-  restaurant?: Restaurant | undefined;
-  deletedAt?: moment.Moment | undefined;
-  tenantId?: string | undefined;
-
-  constructor(data?: IWishList) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.restaurantId = _data["restaurantId"];
-      this.userId = _data["userId"];
-      this.productId = _data["productId"];
-      this.product = _data["product"]
-        ? Product.fromJS(_data["product"])
-        : <any>undefined;
-      this.user = _data["user"] ? User.fromJS(_data["user"]) : <any>undefined;
-      this.restaurant = _data["restaurant"]
-        ? Restaurant.fromJS(_data["restaurant"])
-        : <any>undefined;
-      this.deletedAt = _data["deletedAt"]
-        ? moment(_data["deletedAt"].toString())
-        : <any>undefined;
-      this.tenantId = _data["tenantId"];
+    init(_data?: any) {
+        if (_data) {
+            this.tag = _data["tag"] ? Tag.fromJS(_data["tag"]) : <any>undefined;
+            this.tagId = _data["tagId"];
+            this.item = _data["item"] ? Item.fromJS(_data["item"]) : <any>undefined;
+            this.itemId = _data["itemId"];
+        }
     }
-  }
 
-  static fromJS(data: any): WishList {
-    data = typeof data === "object" ? data : {};
-    let result = new WishList();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["restaurantId"] = this.restaurantId;
-    data["userId"] = this.userId;
-    data["productId"] = this.productId;
-    data["product"] = this.product ? this.product.toJSON() : <any>undefined;
-    data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-    data["restaurant"] = this.restaurant
-      ? this.restaurant.toJSON()
-      : <any>undefined;
-    data["deletedAt"] = this.deletedAt
-      ? this.deletedAt.toISOString()
-      : <any>undefined;
-    data["tenantId"] = this.tenantId;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IWishList extends IEntityBaseOfInteger {
-  restaurantId: string;
-  userId?: string | undefined;
-  productId: string;
-  product?: Product | undefined;
-  user?: User | undefined;
-  restaurant?: Restaurant | undefined;
-  deletedAt?: moment.Moment | undefined;
-  tenantId?: string | undefined;
-}
-
-export class Product extends EntityBaseOfGuid implements IProduct {
-  name?: string | undefined;
-  description?: string | undefined;
-  summary?: string | undefined;
-  unitPrice?: number | undefined;
-  offerPrice?: number | undefined;
-  toppingPrice?: number | undefined;
-  rate?: number | undefined;
-  categoryId!: string;
-  isEnable?: boolean | undefined;
-  isParent?: boolean | undefined;
-  isAddon?: boolean | undefined;
-  parentId?: string | undefined;
-  mainImage?: string | undefined;
-  categoryPortionId?: string | undefined;
-  toppingId?: string | undefined;
-  deleteAt?: moment.Moment | undefined;
-  category?: Category | undefined;
-  portionSizeId?: number | undefined;
-  portionSize?: PortionSize | undefined;
-  categoryPortion?: CategoryPortion | undefined;
-  topping?: Topping | undefined;
-  wishLists?: WishList[] | undefined;
-  ingredient?: string | undefined;
-  displayOrder?: number | undefined;
-  isSoldOut!: boolean;
-  isDeliverable!: boolean;
-  tenantId?: string | undefined;
-
-  constructor(data?: IProduct) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.name = _data["name"];
-      this.description = _data["description"];
-      this.summary = _data["summary"];
-      this.unitPrice = _data["unitPrice"];
-      this.offerPrice = _data["offerPrice"];
-      this.toppingPrice = _data["toppingPrice"];
-      this.rate = _data["rate"];
-      this.categoryId = _data["categoryId"];
-      this.isEnable = _data["isEnable"];
-      this.isParent = _data["isParent"];
-      this.isAddon = _data["isAddon"];
-      this.parentId = _data["parentId"];
-      this.mainImage = _data["mainImage"];
-      this.categoryPortionId = _data["categoryPortionId"];
-      this.toppingId = _data["toppingId"];
-      this.deleteAt = _data["deleteAt"]
-        ? moment(_data["deleteAt"].toString())
-        : <any>undefined;
-      this.category = _data["category"]
-        ? Category.fromJS(_data["category"])
-        : <any>undefined;
-      this.portionSizeId = _data["portionSizeId"];
-      this.portionSize = _data["portionSize"]
-        ? PortionSize.fromJS(_data["portionSize"])
-        : <any>undefined;
-      this.categoryPortion = _data["categoryPortion"]
-        ? CategoryPortion.fromJS(_data["categoryPortion"])
-        : <any>undefined;
-      this.topping = _data["topping"]
-        ? Topping.fromJS(_data["topping"])
-        : <any>undefined;
-      if (Array.isArray(_data["wishLists"])) {
-        this.wishLists = [] as any;
-        for (let item of _data["wishLists"])
-          this.wishLists!.push(WishList.fromJS(item));
-      }
-      this.ingredient = _data["ingredient"];
-      this.displayOrder = _data["displayOrder"];
-      this.isSoldOut = _data["isSoldOut"];
-      this.isDeliverable = _data["isDeliverable"];
-      this.tenantId = _data["tenantId"];
+    static fromJS(data: any): ItemTag {
+        data = typeof data === 'object' ? data : {};
+        let result = new ItemTag();
+        result.init(data);
+        return result;
     }
-  }
 
-  static fromJS(data: any): Product {
-    data = typeof data === "object" ? data : {};
-    let result = new Product();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["name"] = this.name;
-    data["description"] = this.description;
-    data["summary"] = this.summary;
-    data["unitPrice"] = this.unitPrice;
-    data["offerPrice"] = this.offerPrice;
-    data["toppingPrice"] = this.toppingPrice;
-    data["rate"] = this.rate;
-    data["categoryId"] = this.categoryId;
-    data["isEnable"] = this.isEnable;
-    data["isParent"] = this.isParent;
-    data["isAddon"] = this.isAddon;
-    data["parentId"] = this.parentId;
-    data["mainImage"] = this.mainImage;
-    data["categoryPortionId"] = this.categoryPortionId;
-    data["toppingId"] = this.toppingId;
-    data["deleteAt"] = this.deleteAt
-      ? this.deleteAt.toISOString()
-      : <any>undefined;
-    data["category"] = this.category ? this.category.toJSON() : <any>undefined;
-    data["portionSizeId"] = this.portionSizeId;
-    data["portionSize"] = this.portionSize
-      ? this.portionSize.toJSON()
-      : <any>undefined;
-    data["categoryPortion"] = this.categoryPortion
-      ? this.categoryPortion.toJSON()
-      : <any>undefined;
-    data["topping"] = this.topping ? this.topping.toJSON() : <any>undefined;
-    if (Array.isArray(this.wishLists)) {
-      data["wishLists"] = [];
-      for (let item of this.wishLists) data["wishLists"].push(item.toJSON());
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["tag"] = this.tag ? this.tag.toJSON() : <any>undefined;
+        data["tagId"] = this.tagId;
+        data["item"] = this.item ? this.item.toJSON() : <any>undefined;
+        data["itemId"] = this.itemId;
+        return data; 
     }
-    data["ingredient"] = this.ingredient;
-    data["displayOrder"] = this.displayOrder;
-    data["isSoldOut"] = this.isSoldOut;
-    data["isDeliverable"] = this.isDeliverable;
-    data["tenantId"] = this.tenantId;
-    super.toJSON(data);
-    return data;
-  }
 }
 
-export interface IProduct extends IEntityBaseOfGuid {
-  name?: string | undefined;
-  description?: string | undefined;
-  summary?: string | undefined;
-  unitPrice?: number | undefined;
-  offerPrice?: number | undefined;
-  toppingPrice?: number | undefined;
-  rate?: number | undefined;
-  categoryId: string;
-  isEnable?: boolean | undefined;
-  isParent?: boolean | undefined;
-  isAddon?: boolean | undefined;
-  parentId?: string | undefined;
-  mainImage?: string | undefined;
-  categoryPortionId?: string | undefined;
-  toppingId?: string | undefined;
-  deleteAt?: moment.Moment | undefined;
-  category?: Category | undefined;
-  portionSizeId?: number | undefined;
-  portionSize?: PortionSize | undefined;
-  categoryPortion?: CategoryPortion | undefined;
-  topping?: Topping | undefined;
-  wishLists?: WishList[] | undefined;
-  ingredient?: string | undefined;
-  displayOrder?: number | undefined;
-  isSoldOut: boolean;
-  isDeliverable: boolean;
-  tenantId?: string | undefined;
+export interface IItemTag {
+    tag?: Tag | undefined;
+    tagId: string;
+    item?: Item | undefined;
+    itemId: string;
 }
 
-export class PortionSize extends EntityBaseOfInteger implements IPortionSize {
-  name?: string | undefined;
-  restaurantId!: string;
-  restaurant?: Restaurant | undefined;
-  deletedAt?: moment.Moment | undefined;
-  tenantId?: string | undefined;
+export class Tag extends EntityBaseOfGuid implements ITag {
+    text?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
 
-  constructor(data?: IPortionSize) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.name = _data["name"];
-      this.restaurantId = _data["restaurantId"];
-      this.restaurant = _data["restaurant"]
-        ? Restaurant.fromJS(_data["restaurant"])
-        : <any>undefined;
-      this.deletedAt = _data["deletedAt"]
-        ? moment(_data["deletedAt"].toString())
-        : <any>undefined;
-      this.tenantId = _data["tenantId"];
+    constructor(data?: ITag) {
+        super(data);
     }
-  }
 
-  static fromJS(data: any): PortionSize {
-    data = typeof data === "object" ? data : {};
-    let result = new PortionSize();
-    result.init(data);
-    return result;
-  }
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.text = _data["text"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+        }
+    }
 
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["name"] = this.name;
-    data["restaurantId"] = this.restaurantId;
-    data["restaurant"] = this.restaurant
-      ? this.restaurant.toJSON()
-      : <any>undefined;
-    data["deletedAt"] = this.deletedAt
-      ? this.deletedAt.toISOString()
-      : <any>undefined;
-    data["tenantId"] = this.tenantId;
-    super.toJSON(data);
-    return data;
-  }
+    static fromJS(data: any): Tag {
+        data = typeof data === 'object' ? data : {};
+        let result = new Tag();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["text"] = this.text;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        super.toJSON(data);
+        return data; 
+    }
 }
 
-export interface IPortionSize extends IEntityBaseOfInteger {
-  name?: string | undefined;
-  restaurantId: string;
-  restaurant?: Restaurant | undefined;
-  deletedAt?: moment.Moment | undefined;
-  tenantId?: string | undefined;
+export interface ITag extends IEntityBaseOfGuid {
+    text?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
 }
 
 export abstract class BaseDomainEvent implements IBaseDomainEvent {
-  dateOccurred!: moment.Moment;
+    dateOccurred!: moment.Moment;
 
-  constructor(data?: IBaseDomainEvent) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
+    constructor(data?: IBaseDomainEvent) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
     }
-  }
 
-  init(_data?: any) {
-    if (_data) {
-      this.dateOccurred = _data["dateOccurred"]
-        ? moment(_data["dateOccurred"].toString())
-        : <any>undefined;
+    init(_data?: any) {
+        if (_data) {
+            this.dateOccurred = _data["dateOccurred"] ? moment(_data["dateOccurred"].toString()) : <any>undefined;
+        }
     }
-  }
 
-  static fromJS(data: any): BaseDomainEvent {
-    data = typeof data === "object" ? data : {};
-    throw new Error(
-      "The abstract class 'BaseDomainEvent' cannot be instantiated."
-    );
-  }
+    static fromJS(data: any): BaseDomainEvent {
+        data = typeof data === 'object' ? data : {};
+        throw new Error("The abstract class 'BaseDomainEvent' cannot be instantiated.");
+    }
 
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["dateOccurred"] = this.dateOccurred
-      ? this.dateOccurred.toISOString()
-      : <any>undefined;
-    return data;
-  }
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["dateOccurred"] = this.dateOccurred ? this.dateOccurred.toISOString() : <any>undefined;
+        return data; 
+    }
 }
 
 export interface IBaseDomainEvent {
-  dateOccurred: moment.Moment;
-}
-
-export class CategoryPortion
-  extends EntityBaseOfGuid
-  implements ICategoryPortion {
-  portionsName?: string | undefined;
-  portionSizeId!: number;
-  portionSize?: PortionSize | undefined;
-  categoryId!: string;
-  category?: Category | undefined;
-
-  constructor(data?: ICategoryPortion) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.portionsName = _data["portionsName"];
-      this.portionSizeId = _data["portionSizeId"];
-      this.portionSize = _data["portionSize"]
-        ? PortionSize.fromJS(_data["portionSize"])
-        : <any>undefined;
-      this.categoryId = _data["categoryId"];
-      this.category = _data["category"]
-        ? Category.fromJS(_data["category"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): CategoryPortion {
-    data = typeof data === "object" ? data : {};
-    let result = new CategoryPortion();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["portionsName"] = this.portionsName;
-    data["portionSizeId"] = this.portionSizeId;
-    data["portionSize"] = this.portionSize
-      ? this.portionSize.toJSON()
-      : <any>undefined;
-    data["categoryId"] = this.categoryId;
-    data["category"] = this.category ? this.category.toJSON() : <any>undefined;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface ICategoryPortion extends IEntityBaseOfGuid {
-  portionsName?: string | undefined;
-  portionSizeId: number;
-  portionSize?: PortionSize | undefined;
-  categoryId: string;
-  category?: Category | undefined;
-}
-
-export class Topping extends EntityBaseOfGuid implements ITopping {
-  name?: string | undefined;
-  price!: number;
-  isEnable!: boolean;
-  deletedAt?: moment.Moment | undefined;
-  restaurantId!: string;
-  restaurant?: Restaurant | undefined;
-  addonCategories?: AddonCategory[] | undefined;
-  tenantId?: string | undefined;
-
-  constructor(data?: ITopping) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.name = _data["name"];
-      this.price = _data["price"];
-      this.isEnable = _data["isEnable"];
-      this.deletedAt = _data["deletedAt"]
-        ? moment(_data["deletedAt"].toString())
-        : <any>undefined;
-      this.restaurantId = _data["restaurantId"];
-      this.restaurant = _data["restaurant"]
-        ? Restaurant.fromJS(_data["restaurant"])
-        : <any>undefined;
-      if (Array.isArray(_data["addonCategories"])) {
-        this.addonCategories = [] as any;
-        for (let item of _data["addonCategories"])
-          this.addonCategories!.push(AddonCategory.fromJS(item));
-      }
-      this.tenantId = _data["tenantId"];
-    }
-  }
-
-  static fromJS(data: any): Topping {
-    data = typeof data === "object" ? data : {};
-    let result = new Topping();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["name"] = this.name;
-    data["price"] = this.price;
-    data["isEnable"] = this.isEnable;
-    data["deletedAt"] = this.deletedAt
-      ? this.deletedAt.toISOString()
-      : <any>undefined;
-    data["restaurantId"] = this.restaurantId;
-    data["restaurant"] = this.restaurant
-      ? this.restaurant.toJSON()
-      : <any>undefined;
-    if (Array.isArray(this.addonCategories)) {
-      data["addonCategories"] = [];
-      for (let item of this.addonCategories)
-        data["addonCategories"].push(item.toJSON());
-    }
-    data["tenantId"] = this.tenantId;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface ITopping extends IEntityBaseOfGuid {
-  name?: string | undefined;
-  price: number;
-  isEnable: boolean;
-  deletedAt?: moment.Moment | undefined;
-  restaurantId: string;
-  restaurant?: Restaurant | undefined;
-  addonCategories?: AddonCategory[] | undefined;
-  tenantId?: string | undefined;
-}
-
-export class AddonCategory extends EntityBaseOfGuid implements IAddonCategory {
-  toppingId!: string;
-  topping?: Topping | undefined;
-  categoryId!: string;
-  category?: Category | undefined;
-
-  constructor(data?: IAddonCategory) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.toppingId = _data["toppingId"];
-      this.topping = _data["topping"]
-        ? Topping.fromJS(_data["topping"])
-        : <any>undefined;
-      this.categoryId = _data["categoryId"];
-      this.category = _data["category"]
-        ? Category.fromJS(_data["category"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): AddonCategory {
-    data = typeof data === "object" ? data : {};
-    let result = new AddonCategory();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["toppingId"] = this.toppingId;
-    data["topping"] = this.topping ? this.topping.toJSON() : <any>undefined;
-    data["categoryId"] = this.categoryId;
-    data["category"] = this.category ? this.category.toJSON() : <any>undefined;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IAddonCategory extends IEntityBaseOfGuid {
-  toppingId: string;
-  topping?: Topping | undefined;
-  categoryId: string;
-  category?: Category | undefined;
-}
-
-export class PaymentOption extends EntityBaseOfGuid implements IPaymentOption {
-  restaurantId!: string;
-  restaurant?: Restaurant | undefined;
-  optionId?: string | undefined;
-  name?: string | undefined;
-  publicKey?: string | undefined;
-  secretKey?: string | undefined;
-  tenantId?: string | undefined;
-
-  constructor(data?: IPaymentOption) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.restaurantId = _data["restaurantId"];
-      this.restaurant = _data["restaurant"]
-        ? Restaurant.fromJS(_data["restaurant"])
-        : <any>undefined;
-      this.optionId = _data["optionId"];
-      this.name = _data["name"];
-      this.publicKey = _data["publicKey"];
-      this.secretKey = _data["secretKey"];
-      this.tenantId = _data["tenantId"];
-    }
-  }
-
-  static fromJS(data: any): PaymentOption {
-    data = typeof data === "object" ? data : {};
-    let result = new PaymentOption();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["restaurantId"] = this.restaurantId;
-    data["restaurant"] = this.restaurant
-      ? this.restaurant.toJSON()
-      : <any>undefined;
-    data["optionId"] = this.optionId;
-    data["name"] = this.name;
-    data["publicKey"] = this.publicKey;
-    data["secretKey"] = this.secretKey;
-    data["tenantId"] = this.tenantId;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IPaymentOption extends IEntityBaseOfGuid {
-  restaurantId: string;
-  restaurant?: Restaurant | undefined;
-  optionId?: string | undefined;
-  name?: string | undefined;
-  publicKey?: string | undefined;
-  secretKey?: string | undefined;
-  tenantId?: string | undefined;
-}
-
-export class CategoryAvailability
-  extends EntityBaseOfGuid
-  implements ICategoryAvailability {
-  categoryId!: string;
-  date?: string | undefined;
-  from!: moment.Moment;
-  to!: moment.Moment;
-
-  constructor(data?: ICategoryAvailability) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.categoryId = _data["categoryId"];
-      this.date = _data["date"];
-      this.from = _data["from"]
-        ? moment(_data["from"].toString())
-        : <any>undefined;
-      this.to = _data["to"] ? moment(_data["to"].toString()) : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): CategoryAvailability {
-    data = typeof data === "object" ? data : {};
-    let result = new CategoryAvailability();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["categoryId"] = this.categoryId;
-    data["date"] = this.date;
-    data["from"] = this.from ? this.from.toISOString() : <any>undefined;
-    data["to"] = this.to ? this.to.toISOString() : <any>undefined;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface ICategoryAvailability extends IEntityBaseOfGuid {
-  categoryId: string;
-  date?: string | undefined;
-  from: moment.Moment;
-  to: moment.Moment;
-}
-
-export class CategoryPortionModel implements ICategoryPortionModel {
-  id?: string | undefined;
-  portionsNAme?: string | undefined;
-  portionSizeId!: number;
-  portionSize?: PortionSizeModel | undefined;
-  categoryId?: string | undefined;
-  category?: CategoryModel | undefined;
-  offerPrice!: number;
-  regularPrice!: number;
-
-  constructor(data?: ICategoryPortionModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.portionsNAme = _data["portionsNAme"];
-      this.portionSizeId = _data["portionSizeId"];
-      this.portionSize = _data["portionSize"]
-        ? PortionSizeModel.fromJS(_data["portionSize"])
-        : <any>undefined;
-      this.categoryId = _data["categoryId"];
-      this.category = _data["category"]
-        ? CategoryModel.fromJS(_data["category"])
-        : <any>undefined;
-      this.offerPrice = _data["offerPrice"];
-      this.regularPrice = _data["regularPrice"];
-    }
-  }
-
-  static fromJS(data: any): CategoryPortionModel {
-    data = typeof data === "object" ? data : {};
-    let result = new CategoryPortionModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["portionsNAme"] = this.portionsNAme;
-    data["portionSizeId"] = this.portionSizeId;
-    data["portionSize"] = this.portionSize
-      ? this.portionSize.toJSON()
-      : <any>undefined;
-    data["categoryId"] = this.categoryId;
-    data["category"] = this.category ? this.category.toJSON() : <any>undefined;
-    data["offerPrice"] = this.offerPrice;
-    data["regularPrice"] = this.regularPrice;
-    return data;
-  }
-}
-
-export interface ICategoryPortionModel {
-  id?: string | undefined;
-  portionsNAme?: string | undefined;
-  portionSizeId: number;
-  portionSize?: PortionSizeModel | undefined;
-  categoryId?: string | undefined;
-  category?: CategoryModel | undefined;
-  offerPrice: number;
-  regularPrice: number;
-}
-
-export class PortionSizeModel extends BaseModel implements IPortionSizeModel {
-  id!: number;
-  name?: string | undefined;
-  restaurantId?: string | undefined;
-  category?: CategoryModel | undefined;
-  restaurant?: RestaurantModel | undefined;
-  deletedAt?: moment.Moment | undefined;
-
-  constructor(data?: IPortionSizeModel) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.restaurantId = _data["restaurantId"];
-      this.category = _data["category"]
-        ? CategoryModel.fromJS(_data["category"])
-        : <any>undefined;
-      this.restaurant = _data["restaurant"]
-        ? RestaurantModel.fromJS(_data["restaurant"])
-        : <any>undefined;
-      this.deletedAt = _data["deletedAt"]
-        ? moment(_data["deletedAt"].toString())
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): PortionSizeModel {
-    data = typeof data === "object" ? data : {};
-    let result = new PortionSizeModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["restaurantId"] = this.restaurantId;
-    data["category"] = this.category ? this.category.toJSON() : <any>undefined;
-    data["restaurant"] = this.restaurant
-      ? this.restaurant.toJSON()
-      : <any>undefined;
-    data["deletedAt"] = this.deletedAt
-      ? this.deletedAt.toISOString()
-      : <any>undefined;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IPortionSizeModel extends IBaseModel {
-  id: number;
-  name?: string | undefined;
-  restaurantId?: string | undefined;
-  category?: CategoryModel | undefined;
-  restaurant?: RestaurantModel | undefined;
-  deletedAt?: moment.Moment | undefined;
-}
-
-export class RestaurantModel implements IRestaurantModel {
-  id?: string | undefined;
-  userId?: number | undefined;
-  user?: UserModel | undefined;
-  name?: string | undefined;
-  phoneNo?: string | undefined;
-  address?: string | undefined;
-  postalCode?: string | undefined;
-  email?: string | undefined;
-  image?: string | undefined;
-  categories?: CategoryModel[] | undefined;
-  paymentOptions?: PaymentOptionModel[] | undefined;
-
-  constructor(data?: IRestaurantModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.userId = _data["userId"];
-      this.user = _data["user"]
-        ? UserModel.fromJS(_data["user"])
-        : <any>undefined;
-      this.name = _data["name"];
-      this.phoneNo = _data["phoneNo"];
-      this.address = _data["address"];
-      this.postalCode = _data["postalCode"];
-      this.email = _data["email"];
-      this.image = _data["image"];
-      if (Array.isArray(_data["categories"])) {
-        this.categories = [] as any;
-        for (let item of _data["categories"])
-          this.categories!.push(CategoryModel.fromJS(item));
-      }
-      if (Array.isArray(_data["paymentOptions"])) {
-        this.paymentOptions = [] as any;
-        for (let item of _data["paymentOptions"])
-          this.paymentOptions!.push(PaymentOptionModel.fromJS(item));
-      }
-    }
-  }
-
-  static fromJS(data: any): RestaurantModel {
-    data = typeof data === "object" ? data : {};
-    let result = new RestaurantModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["userId"] = this.userId;
-    data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-    data["name"] = this.name;
-    data["phoneNo"] = this.phoneNo;
-    data["address"] = this.address;
-    data["postalCode"] = this.postalCode;
-    data["email"] = this.email;
-    data["image"] = this.image;
-    if (Array.isArray(this.categories)) {
-      data["categories"] = [];
-      for (let item of this.categories) data["categories"].push(item.toJSON());
-    }
-    if (Array.isArray(this.paymentOptions)) {
-      data["paymentOptions"] = [];
-      for (let item of this.paymentOptions)
-        data["paymentOptions"].push(item.toJSON());
-    }
-    return data;
-  }
-}
-
-export interface IRestaurantModel {
-  id?: string | undefined;
-  userId?: number | undefined;
-  user?: UserModel | undefined;
-  name?: string | undefined;
-  phoneNo?: string | undefined;
-  address?: string | undefined;
-  postalCode?: string | undefined;
-  email?: string | undefined;
-  image?: string | undefined;
-  categories?: CategoryModel[] | undefined;
-  paymentOptions?: PaymentOptionModel[] | undefined;
-}
-
-export class UserModel extends BaseModel implements IUserModel {
-  identityId?: string | undefined;
-  firstName?: string | undefined;
-  lastName?: string | undefined;
-  address?: string | undefined;
-  phoneNumber?: string | undefined;
-  email?: string | undefined;
-  wishLists?: WishList[] | undefined;
-
-  constructor(data?: IUserModel) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.identityId = _data["identityId"];
-      this.firstName = _data["firstName"];
-      this.lastName = _data["lastName"];
-      this.address = _data["address"];
-      this.phoneNumber = _data["phoneNumber"];
-      this.email = _data["email"];
-      if (Array.isArray(_data["wishLists"])) {
-        this.wishLists = [] as any;
-        for (let item of _data["wishLists"])
-          this.wishLists!.push(WishList.fromJS(item));
-      }
-    }
-  }
-
-  static fromJS(data: any): UserModel {
-    data = typeof data === "object" ? data : {};
-    let result = new UserModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["identityId"] = this.identityId;
-    data["firstName"] = this.firstName;
-    data["lastName"] = this.lastName;
-    data["address"] = this.address;
-    data["phoneNumber"] = this.phoneNumber;
-    data["email"] = this.email;
-    if (Array.isArray(this.wishLists)) {
-      data["wishLists"] = [];
-      for (let item of this.wishLists) data["wishLists"].push(item.toJSON());
-    }
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IUserModel extends IBaseModel {
-  identityId?: string | undefined;
-  firstName?: string | undefined;
-  lastName?: string | undefined;
-  address?: string | undefined;
-  phoneNumber?: string | undefined;
-  email?: string | undefined;
-  wishLists?: WishList[] | undefined;
-}
-
-export class PaymentOptionModel
-  extends BaseModel
-  implements IPaymentOptionModel {
-  id?: string | undefined;
-  restaurantId?: string | undefined;
-  restaurant?: RestaurantModel | undefined;
-  optionId?: string | undefined;
-  name!: string;
-  publicKey!: string;
-  secretKey!: string;
-
-  constructor(data?: IPaymentOptionModel) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.id = _data["id"];
-      this.restaurantId = _data["restaurantId"];
-      this.restaurant = _data["restaurant"]
-        ? RestaurantModel.fromJS(_data["restaurant"])
-        : <any>undefined;
-      this.optionId = _data["optionId"];
-      this.name = _data["name"];
-      this.publicKey = _data["publicKey"];
-      this.secretKey = _data["secretKey"];
-    }
-  }
-
-  static fromJS(data: any): PaymentOptionModel {
-    data = typeof data === "object" ? data : {};
-    let result = new PaymentOptionModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["restaurantId"] = this.restaurantId;
-    data["restaurant"] = this.restaurant
-      ? this.restaurant.toJSON()
-      : <any>undefined;
-    data["optionId"] = this.optionId;
-    data["name"] = this.name;
-    data["publicKey"] = this.publicKey;
-    data["secretKey"] = this.secretKey;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IPaymentOptionModel extends IBaseModel {
-  id?: string | undefined;
-  restaurantId?: string | undefined;
-  restaurant?: RestaurantModel | undefined;
-  optionId?: string | undefined;
-  name: string;
-  publicKey: string;
-  secretKey: string;
-}
-
-export abstract class MarshalByRefObject implements IMarshalByRefObject {
-  constructor(data?: IMarshalByRefObject) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {}
-
-  static fromJS(data: any): MarshalByRefObject {
-    data = typeof data === "object" ? data : {};
-    throw new Error(
-      "The abstract class 'MarshalByRefObject' cannot be instantiated."
-    );
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    return data;
-  }
-}
-
-export interface IMarshalByRefObject {}
-
-export abstract class Stream extends MarshalByRefObject implements IStream {
-  canTimeout!: boolean;
-  readTimeout!: number;
-  writeTimeout!: number;
-
-  constructor(data?: IStream) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.canTimeout = _data["canTimeout"];
-      this.readTimeout = _data["readTimeout"];
-      this.writeTimeout = _data["writeTimeout"];
-    }
-  }
-
-  static fromJS(data: any): Stream {
-    data = typeof data === "object" ? data : {};
-    throw new Error("The abstract class 'Stream' cannot be instantiated.");
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["canTimeout"] = this.canTimeout;
-    data["readTimeout"] = this.readTimeout;
-    data["writeTimeout"] = this.writeTimeout;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IStream extends IMarshalByRefObject {
-  canTimeout: boolean;
-  readTimeout: number;
-  writeTimeout: number;
-}
-
-export class MemoryStream extends Stream implements IMemoryStream {
-  canRead!: boolean;
-  canSeek!: boolean;
-  canWrite!: boolean;
-  capacity!: number;
-  length!: number;
-  position!: number;
-
-  constructor(data?: IMemoryStream) {
-    super(data);
-  }
-
-  init(_data?: any) {
-    super.init(_data);
-    if (_data) {
-      this.canRead = _data["canRead"];
-      this.canSeek = _data["canSeek"];
-      this.canWrite = _data["canWrite"];
-      this.capacity = _data["capacity"];
-      this.length = _data["length"];
-      this.position = _data["position"];
-    }
-  }
-
-  static fromJS(data: any): MemoryStream {
-    data = typeof data === "object" ? data : {};
-    let result = new MemoryStream();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["canRead"] = this.canRead;
-    data["canSeek"] = this.canSeek;
-    data["canWrite"] = this.canWrite;
-    data["capacity"] = this.capacity;
-    data["length"] = this.length;
-    data["position"] = this.position;
-    super.toJSON(data);
-    return data;
-  }
-}
-
-export interface IMemoryStream extends IStream {
-  canRead: boolean;
-  canSeek: boolean;
-  canWrite: boolean;
-  capacity: number;
-  length: number;
-  position: number;
-}
-
-export class CategoryAvailabilityModel implements ICategoryAvailabilityModel {
-  id?: string | undefined;
-  categoryId?: string | undefined;
-  date?: string | undefined;
-  from!: moment.Moment;
-  to!: moment.Moment;
-
-  constructor(data?: ICategoryAvailabilityModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.categoryId = _data["categoryId"];
-      this.date = _data["date"];
-      this.from = _data["from"]
-        ? moment(_data["from"].toString())
-        : <any>undefined;
-      this.to = _data["to"] ? moment(_data["to"].toString()) : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): CategoryAvailabilityModel {
-    data = typeof data === "object" ? data : {};
-    let result = new CategoryAvailabilityModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["categoryId"] = this.categoryId;
-    data["date"] = this.date;
-    data["from"] = this.from ? this.from.toISOString() : <any>undefined;
-    data["to"] = this.to ? this.to.toISOString() : <any>undefined;
-    return data;
-  }
-}
-
-export interface ICategoryAvailabilityModel {
-  id?: string | undefined;
-  categoryId?: string | undefined;
-  date?: string | undefined;
-  from: moment.Moment;
-  to: moment.Moment;
-}
-
-export class ResponseOfGetAddOnResponse implements IResponseOfGetAddOnResponse {
-  data?: GetAddOnResponse | undefined;
-  _links?: LinkBase | undefined;
-
-  constructor(data?: IResponseOfGetAddOnResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.data = _data["data"]
-        ? GetAddOnResponse.fromJS(_data["data"])
-        : <any>undefined;
-      this._links = _data["_links"]
-        ? LinkBase.fromJS(_data["_links"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): ResponseOfGetAddOnResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new ResponseOfGetAddOnResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["data"] = this.data ? this.data.toJSON() : <any>undefined;
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IResponseOfGetAddOnResponse {
-  data?: GetAddOnResponse | undefined;
-  _links?: LinkBase | undefined;
-}
-
-export class UpdateAddOnRequest implements IUpdateAddOnRequest {
-  id?: string | undefined;
-  name?: string | undefined;
-  price!: number;
-  isEnable?: boolean | undefined;
-  toppingModel?: ToppingModel | undefined;
-
-  constructor(data?: IUpdateAddOnRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.price = _data["price"];
-      this.isEnable = _data["isEnable"];
-      this.toppingModel = _data["toppingModel"]
-        ? ToppingModel.fromJS(_data["toppingModel"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): UpdateAddOnRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new UpdateAddOnRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["price"] = this.price;
-    data["isEnable"] = this.isEnable;
-    data["toppingModel"] = this.toppingModel
-      ? this.toppingModel.toJSON()
-      : <any>undefined;
-    return data;
-  }
-}
-
-export interface IUpdateAddOnRequest {
-  id?: string | undefined;
-  name?: string | undefined;
-  price: number;
-  isEnable?: boolean | undefined;
-  toppingModel?: ToppingModel | undefined;
-}
-
-export class PagedResponseOfGetCategoryContractResponse
-  implements IPagedResponseOfGetCategoryContractResponse {
-  data?: GetCategoryContractResponse[] | undefined;
-  pageNumber?: number | undefined;
-  pageSize?: number | undefined;
-  _links?: Links | undefined;
-
-  constructor(data?: IPagedResponseOfGetCategoryContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["data"])) {
-        this.data = [] as any;
-        for (let item of _data["data"])
-          this.data!.push(GetCategoryContractResponse.fromJS(item));
-      }
-      this.pageNumber = _data["pageNumber"];
-      this.pageSize = _data["pageSize"];
-      this._links = _data["_links"]
-        ? Links.fromJS(_data["_links"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): PagedResponseOfGetCategoryContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new PagedResponseOfGetCategoryContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.data)) {
-      data["data"] = [];
-      for (let item of this.data) data["data"].push(item.toJSON());
-    }
-    data["pageNumber"] = this.pageNumber;
-    data["pageSize"] = this.pageSize;
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IPagedResponseOfGetCategoryContractResponse {
-  data?: GetCategoryContractResponse[] | undefined;
-  pageNumber?: number | undefined;
-  pageSize?: number | undefined;
-  _links?: Links | undefined;
-}
-
-export class GetCategoryContractResponse
-  implements IGetCategoryContractResponse {
-  name?: string | undefined;
-  shortDescription?: string | undefined;
-  longDescription?: string | undefined;
-  imagePath?: string | undefined;
-  restaurantId?: string | undefined;
-  isEnable?: boolean | undefined;
-  displayOrder?: number | undefined;
-  deleteAt?: moment.Moment | undefined;
-  availableFrom?: moment.Moment | undefined;
-  availableTo?: moment.Moment | undefined;
-  image?: MemoryStream | undefined;
-  portionIds?: number[] | undefined;
-
-  constructor(data?: IGetCategoryContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.name = _data["name"];
-      this.shortDescription = _data["shortDescription"];
-      this.longDescription = _data["longDescription"];
-      this.imagePath = _data["imagePath"];
-      this.restaurantId = _data["restaurantId"];
-      this.isEnable = _data["isEnable"];
-      this.displayOrder = _data["displayOrder"];
-      this.deleteAt = _data["deleteAt"]
-        ? moment(_data["deleteAt"].toString())
-        : <any>undefined;
-      this.availableFrom = _data["availableFrom"]
-        ? moment(_data["availableFrom"].toString())
-        : <any>undefined;
-      this.availableTo = _data["availableTo"]
-        ? moment(_data["availableTo"].toString())
-        : <any>undefined;
-      this.image = _data["image"]
-        ? MemoryStream.fromJS(_data["image"])
-        : <any>undefined;
-      if (Array.isArray(_data["portionIds"])) {
-        this.portionIds = [] as any;
-        for (let item of _data["portionIds"]) this.portionIds!.push(item);
-      }
-    }
-  }
-
-  static fromJS(data: any): GetCategoryContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new GetCategoryContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["name"] = this.name;
-    data["shortDescription"] = this.shortDescription;
-    data["longDescription"] = this.longDescription;
-    data["imagePath"] = this.imagePath;
-    data["restaurantId"] = this.restaurantId;
-    data["isEnable"] = this.isEnable;
-    data["displayOrder"] = this.displayOrder;
-    data["deleteAt"] = this.deleteAt
-      ? this.deleteAt.toISOString()
-      : <any>undefined;
-    data["availableFrom"] = this.availableFrom
-      ? this.availableFrom.toISOString()
-      : <any>undefined;
-    data["availableTo"] = this.availableTo
-      ? this.availableTo.toISOString()
-      : <any>undefined;
-    data["image"] = this.image ? this.image.toJSON() : <any>undefined;
-    if (Array.isArray(this.portionIds)) {
-      data["portionIds"] = [];
-      for (let item of this.portionIds) data["portionIds"].push(item);
-    }
-    return data;
-  }
-}
-
-export interface IGetCategoryContractResponse {
-  name?: string | undefined;
-  shortDescription?: string | undefined;
-  longDescription?: string | undefined;
-  imagePath?: string | undefined;
-  restaurantId?: string | undefined;
-  isEnable?: boolean | undefined;
-  displayOrder?: number | undefined;
-  deleteAt?: moment.Moment | undefined;
-  availableFrom?: moment.Moment | undefined;
-  availableTo?: moment.Moment | undefined;
-  image?: MemoryStream | undefined;
-  portionIds?: number[] | undefined;
-}
-
-export class ResponseOfGetCustomerResponse
-  implements IResponseOfGetCustomerResponse {
-  data?: GetCustomerResponse | undefined;
-  _links?: LinkBase | undefined;
-
-  constructor(data?: IResponseOfGetCustomerResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.data = _data["data"]
-        ? GetCustomerResponse.fromJS(_data["data"])
-        : <any>undefined;
-      this._links = _data["_links"]
-        ? LinkBase.fromJS(_data["_links"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): ResponseOfGetCustomerResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new ResponseOfGetCustomerResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["data"] = this.data ? this.data.toJSON() : <any>undefined;
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IResponseOfGetCustomerResponse {
-  data?: GetCustomerResponse | undefined;
-  _links?: LinkBase | undefined;
-}
-
-export class GetCustomerResponse implements IGetCustomerResponse {
-  customerListModels?: CustomerListModel[] | undefined;
-
-  constructor(data?: IGetCustomerResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["customerListModels"])) {
-        this.customerListModels = [] as any;
-        for (let item of _data["customerListModels"])
-          this.customerListModels!.push(CustomerListModel.fromJS(item));
-      }
-    }
-  }
-
-  static fromJS(data: any): GetCustomerResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new GetCustomerResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.customerListModels)) {
-      data["customerListModels"] = [];
-      for (let item of this.customerListModels)
-        data["customerListModels"].push(item.toJSON());
-    }
-    return data;
-  }
-}
-
-export interface IGetCustomerResponse {
-  customerListModels?: CustomerListModel[] | undefined;
-}
-
-export class CustomerListModel implements ICustomerListModel {
-  id?: string | undefined;
-  userId?: number | undefined;
-  user?: UserModel | undefined;
-  firstName?: string | undefined;
-  lastName?: string | undefined;
-  roleId?: string | undefined;
-  status?: string | undefined;
-  empNo?: string | undefined;
-  joinDate!: moment.Moment;
-  lastDate!: moment.Moment;
-  phoneNo?: string | undefined;
-  mobileNo?: string | undefined;
-  address?: string | undefined;
-  postalCode?: string | undefined;
-  officeEmail?: string | undefined;
-  personalEmail?: string | undefined;
-  image?: string | undefined;
-  restaurantId?: string | undefined;
-  orderCount!: number;
-  totalSales!: number;
-
-  constructor(data?: ICustomerListModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.userId = _data["userId"];
-      this.user = _data["user"]
-        ? UserModel.fromJS(_data["user"])
-        : <any>undefined;
-      this.firstName = _data["firstName"];
-      this.lastName = _data["lastName"];
-      this.roleId = _data["roleId"];
-      this.status = _data["status"];
-      this.empNo = _data["empNo"];
-      this.joinDate = _data["joinDate"]
-        ? moment(_data["joinDate"].toString())
-        : <any>undefined;
-      this.lastDate = _data["lastDate"]
-        ? moment(_data["lastDate"].toString())
-        : <any>undefined;
-      this.phoneNo = _data["phoneNo"];
-      this.mobileNo = _data["mobileNo"];
-      this.address = _data["address"];
-      this.postalCode = _data["postalCode"];
-      this.officeEmail = _data["officeEmail"];
-      this.personalEmail = _data["personalEmail"];
-      this.image = _data["image"];
-      this.restaurantId = _data["restaurantId"];
-      this.orderCount = _data["orderCount"];
-      this.totalSales = _data["totalSales"];
-    }
-  }
-
-  static fromJS(data: any): CustomerListModel {
-    data = typeof data === "object" ? data : {};
-    let result = new CustomerListModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["userId"] = this.userId;
-    data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-    data["firstName"] = this.firstName;
-    data["lastName"] = this.lastName;
-    data["roleId"] = this.roleId;
-    data["status"] = this.status;
-    data["empNo"] = this.empNo;
-    data["joinDate"] = this.joinDate
-      ? this.joinDate.toISOString()
-      : <any>undefined;
-    data["lastDate"] = this.lastDate
-      ? this.lastDate.toISOString()
-      : <any>undefined;
-    data["phoneNo"] = this.phoneNo;
-    data["mobileNo"] = this.mobileNo;
-    data["address"] = this.address;
-    data["postalCode"] = this.postalCode;
-    data["officeEmail"] = this.officeEmail;
-    data["personalEmail"] = this.personalEmail;
-    data["image"] = this.image;
-    data["restaurantId"] = this.restaurantId;
-    data["orderCount"] = this.orderCount;
-    data["totalSales"] = this.totalSales;
-    return data;
-  }
-}
-
-export interface ICustomerListModel {
-  id?: string | undefined;
-  userId?: number | undefined;
-  user?: UserModel | undefined;
-  firstName?: string | undefined;
-  lastName?: string | undefined;
-  roleId?: string | undefined;
-  status?: string | undefined;
-  empNo?: string | undefined;
-  joinDate: moment.Moment;
-  lastDate: moment.Moment;
-  phoneNo?: string | undefined;
-  mobileNo?: string | undefined;
-  address?: string | undefined;
-  postalCode?: string | undefined;
-  officeEmail?: string | undefined;
-  personalEmail?: string | undefined;
-  image?: string | undefined;
-  restaurantId?: string | undefined;
-  orderCount: number;
-  totalSales: number;
-}
-
-export class ResponseOfGetDriverContractResponse
-  implements IResponseOfGetDriverContractResponse {
-  data?: GetDriverContractResponse | undefined;
-  _links?: LinkBase | undefined;
-
-  constructor(data?: IResponseOfGetDriverContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.data = _data["data"]
-        ? GetDriverContractResponse.fromJS(_data["data"])
-        : <any>undefined;
-      this._links = _data["_links"]
-        ? LinkBase.fromJS(_data["_links"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): ResponseOfGetDriverContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new ResponseOfGetDriverContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["data"] = this.data ? this.data.toJSON() : <any>undefined;
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IResponseOfGetDriverContractResponse {
-  data?: GetDriverContractResponse | undefined;
-  _links?: LinkBase | undefined;
-}
-
-export class GetDriverContractResponse implements IGetDriverContractResponse {
-  id?: string | undefined;
-  empNo!: number;
-  driverName?: string | undefined;
-  address?: string | undefined;
-  city?: string | undefined;
-  telephone?: string | undefined;
-  eMail?: string | undefined;
-  licence?: string | undefined;
-  vehicleType?: string | undefined;
-  vehicleNo?: string | undefined;
-  restaurantId?: string | undefined;
-  image?: string | undefined;
-
-  constructor(data?: IGetDriverContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.empNo = _data["empNo"];
-      this.driverName = _data["driverName"];
-      this.address = _data["address"];
-      this.city = _data["city"];
-      this.telephone = _data["telephone"];
-      this.eMail = _data["eMail"];
-      this.licence = _data["licence"];
-      this.vehicleType = _data["vehicleType"];
-      this.vehicleNo = _data["vehicleNo"];
-      this.restaurantId = _data["restaurantId"];
-      this.image = _data["image"];
-    }
-  }
-
-  static fromJS(data: any): GetDriverContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new GetDriverContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["empNo"] = this.empNo;
-    data["driverName"] = this.driverName;
-    data["address"] = this.address;
-    data["city"] = this.city;
-    data["telephone"] = this.telephone;
-    data["eMail"] = this.eMail;
-    data["licence"] = this.licence;
-    data["vehicleType"] = this.vehicleType;
-    data["vehicleNo"] = this.vehicleNo;
-    data["restaurantId"] = this.restaurantId;
-    data["image"] = this.image;
-    return data;
-  }
-}
-
-export interface IGetDriverContractResponse {
-  id?: string | undefined;
-  empNo: number;
-  driverName?: string | undefined;
-  address?: string | undefined;
-  city?: string | undefined;
-  telephone?: string | undefined;
-  eMail?: string | undefined;
-  licence?: string | undefined;
-  vehicleType?: string | undefined;
-  vehicleNo?: string | undefined;
-  restaurantId?: string | undefined;
-  image?: string | undefined;
-}
-
-export class ResponseOfUpdateDriverContractResponse
-  implements IResponseOfUpdateDriverContractResponse {
-  data?: UpdateDriverContractResponse | undefined;
-  _links?: LinkBase | undefined;
-
-  constructor(data?: IResponseOfUpdateDriverContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.data = _data["data"]
-        ? UpdateDriverContractResponse.fromJS(_data["data"])
-        : <any>undefined;
-      this._links = _data["_links"]
-        ? LinkBase.fromJS(_data["_links"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): ResponseOfUpdateDriverContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new ResponseOfUpdateDriverContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["data"] = this.data ? this.data.toJSON() : <any>undefined;
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IResponseOfUpdateDriverContractResponse {
-  data?: UpdateDriverContractResponse | undefined;
-  _links?: LinkBase | undefined;
-}
-
-export class UpdateDriverContractResponse
-  implements IUpdateDriverContractResponse {
-  id?: string | undefined;
-  empNo!: number;
-  driverName?: string | undefined;
-  address?: string | undefined;
-  city?: string | undefined;
-  telephone?: string | undefined;
-  eMail?: string | undefined;
-  licence?: string | undefined;
-  vehicleType?: string | undefined;
-  vehicleNo?: string | undefined;
-  restaurantId?: string | undefined;
-  image?: string | undefined;
-
-  constructor(data?: IUpdateDriverContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.empNo = _data["empNo"];
-      this.driverName = _data["driverName"];
-      this.address = _data["address"];
-      this.city = _data["city"];
-      this.telephone = _data["telephone"];
-      this.eMail = _data["eMail"];
-      this.licence = _data["licence"];
-      this.vehicleType = _data["vehicleType"];
-      this.vehicleNo = _data["vehicleNo"];
-      this.restaurantId = _data["restaurantId"];
-      this.image = _data["image"];
-    }
-  }
-
-  static fromJS(data: any): UpdateDriverContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new UpdateDriverContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["empNo"] = this.empNo;
-    data["driverName"] = this.driverName;
-    data["address"] = this.address;
-    data["city"] = this.city;
-    data["telephone"] = this.telephone;
-    data["eMail"] = this.eMail;
-    data["licence"] = this.licence;
-    data["vehicleType"] = this.vehicleType;
-    data["vehicleNo"] = this.vehicleNo;
-    data["restaurantId"] = this.restaurantId;
-    data["image"] = this.image;
-    return data;
-  }
-}
-
-export interface IUpdateDriverContractResponse {
-  id?: string | undefined;
-  empNo: number;
-  driverName?: string | undefined;
-  address?: string | undefined;
-  city?: string | undefined;
-  telephone?: string | undefined;
-  eMail?: string | undefined;
-  licence?: string | undefined;
-  vehicleType?: string | undefined;
-  vehicleNo?: string | undefined;
-  restaurantId?: string | undefined;
-  image?: string | undefined;
-}
-
-export class UpdateDriverContractRequest
-  implements IUpdateDriverContractRequest {
-  constructor(data?: IUpdateDriverContractRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {}
-
-  static fromJS(data: any): UpdateDriverContractRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new UpdateDriverContractRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    return data;
-  }
-}
-
-export interface IUpdateDriverContractRequest {}
-
-export class ResponseOfCreateDriverContractRequest
-  implements IResponseOfCreateDriverContractRequest {
-  data?: CreateDriverContractRequest | undefined;
-  _links?: LinkBase | undefined;
-
-  constructor(data?: IResponseOfCreateDriverContractRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.data = _data["data"]
-        ? CreateDriverContractRequest.fromJS(_data["data"])
-        : <any>undefined;
-      this._links = _data["_links"]
-        ? LinkBase.fromJS(_data["_links"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): ResponseOfCreateDriverContractRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new ResponseOfCreateDriverContractRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["data"] = this.data ? this.data.toJSON() : <any>undefined;
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IResponseOfCreateDriverContractRequest {
-  data?: CreateDriverContractRequest | undefined;
-  _links?: LinkBase | undefined;
-}
-
-export class CreateDriverContractRequest
-  implements ICreateDriverContractRequest {
-  constructor(data?: ICreateDriverContractRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {}
-
-  static fromJS(data: any): CreateDriverContractRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new CreateDriverContractRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    return data;
-  }
-}
-
-export interface ICreateDriverContractRequest {}
-
-export class ResponseOfListOfGetOrderContractResponse
-  implements IResponseOfListOfGetOrderContractResponse {
-  data?: GetOrderContractResponse[] | undefined;
-  _links?: LinkBase | undefined;
-
-  constructor(data?: IResponseOfListOfGetOrderContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["data"])) {
-        this.data = [] as any;
-        for (let item of _data["data"])
-          this.data!.push(GetOrderContractResponse.fromJS(item));
-      }
-      this._links = _data["_links"]
-        ? LinkBase.fromJS(_data["_links"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): ResponseOfListOfGetOrderContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new ResponseOfListOfGetOrderContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.data)) {
-      data["data"] = [];
-      for (let item of this.data) data["data"].push(item.toJSON());
-    }
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IResponseOfListOfGetOrderContractResponse {
-  data?: GetOrderContractResponse[] | undefined;
-  _links?: LinkBase | undefined;
-}
-
-export class GetOrderContractResponse implements IGetOrderContractResponse {
-  id?: string | undefined;
-  address?: string | undefined;
-  city?: string | undefined;
-  postalCode?: string | undefined;
-  phone?: string | undefined;
-  displayId?: string | undefined;
-  orderDetails?: OrderDetail[] | undefined;
-  subTotal?: string | undefined;
-  deliveryFee?: string | undefined;
-  total?: string | undefined;
-  duration?: string | undefined;
-  distance?: string | undefined;
-  createdAt!: moment.Moment;
-
-  constructor(data?: IGetOrderContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.address = _data["address"];
-      this.city = _data["city"];
-      this.postalCode = _data["postalCode"];
-      this.phone = _data["phone"];
-      this.displayId = _data["displayId"];
-      if (Array.isArray(_data["orderDetails"])) {
-        this.orderDetails = [] as any;
-        for (let item of _data["orderDetails"])
-          this.orderDetails!.push(OrderDetail.fromJS(item));
-      }
-      this.subTotal = _data["subTotal"];
-      this.deliveryFee = _data["deliveryFee"];
-      this.total = _data["total"];
-      this.duration = _data["duration"];
-      this.distance = _data["distance"];
-      this.createdAt = _data["createdAt"]
-        ? moment(_data["createdAt"].toString())
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): GetOrderContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new GetOrderContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["address"] = this.address;
-    data["city"] = this.city;
-    data["postalCode"] = this.postalCode;
-    data["phone"] = this.phone;
-    data["displayId"] = this.displayId;
-    if (Array.isArray(this.orderDetails)) {
-      data["orderDetails"] = [];
-      for (let item of this.orderDetails)
-        data["orderDetails"].push(item.toJSON());
-    }
-    data["subTotal"] = this.subTotal;
-    data["deliveryFee"] = this.deliveryFee;
-    data["total"] = this.total;
-    data["duration"] = this.duration;
-    data["distance"] = this.distance;
-    data["createdAt"] = this.createdAt
-      ? this.createdAt.toISOString()
-      : <any>undefined;
-    return data;
-  }
-}
-
-export interface IGetOrderContractResponse {
-  id?: string | undefined;
-  address?: string | undefined;
-  city?: string | undefined;
-  postalCode?: string | undefined;
-  phone?: string | undefined;
-  displayId?: string | undefined;
-  orderDetails?: OrderDetail[] | undefined;
-  subTotal?: string | undefined;
-  deliveryFee?: string | undefined;
-  total?: string | undefined;
-  duration?: string | undefined;
-  distance?: string | undefined;
-  createdAt: moment.Moment;
-}
-
-export class OrderDetail implements IOrderDetail {
-  id?: string | undefined;
-  product?: ProductApiModel | undefined;
-  quantity!: number;
-  price?: string | undefined;
-
-  constructor(data?: IOrderDetail) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.product = _data["Product"]
-        ? ProductApiModel.fromJS(_data["Product"])
-        : <any>undefined;
-      this.quantity = _data["quantity"];
-      this.price = _data["price"];
-    }
-  }
-
-  static fromJS(data: any): OrderDetail {
-    data = typeof data === "object" ? data : {};
-    let result = new OrderDetail();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["Product"] = this.product ? this.product.toJSON() : <any>undefined;
-    data["quantity"] = this.quantity;
-    data["price"] = this.price;
-    return data;
-  }
-}
-
-export interface IOrderDetail {
-  id?: string | undefined;
-  product?: ProductApiModel | undefined;
-  quantity: number;
-  price?: string | undefined;
-}
-
-export class ProductApiModel implements IProductApiModel {
-  productId?: string | undefined;
-  name?: string | undefined;
-  mainImage?: string | undefined;
-  deleteAt?: moment.Moment | undefined;
-  image?: MemoryStream | undefined;
-
-  constructor(data?: IProductApiModel) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.productId = _data["ProductId"];
-      this.name = _data["Name"];
-      this.mainImage = _data["mainImage"];
-      this.deleteAt = _data["deleteAt"]
-        ? moment(_data["deleteAt"].toString())
-        : <any>undefined;
-      this.image = _data["image"]
-        ? MemoryStream.fromJS(_data["image"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): ProductApiModel {
-    data = typeof data === "object" ? data : {};
-    let result = new ProductApiModel();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["ProductId"] = this.productId;
-    data["Name"] = this.name;
-    data["mainImage"] = this.mainImage;
-    data["deleteAt"] = this.deleteAt
-      ? this.deleteAt.toISOString()
-      : <any>undefined;
-    data["image"] = this.image ? this.image.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IProductApiModel {
-  productId?: string | undefined;
-  name?: string | undefined;
-  mainImage?: string | undefined;
-  deleteAt?: moment.Moment | undefined;
-  image?: MemoryStream | undefined;
-}
-
-export class ResponseOfUpdateOrderContractResponse
-  implements IResponseOfUpdateOrderContractResponse {
-  data?: UpdateOrderContractResponse | undefined;
-  _links?: LinkBase | undefined;
-
-  constructor(data?: IResponseOfUpdateOrderContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.data = _data["data"]
-        ? UpdateOrderContractResponse.fromJS(_data["data"])
-        : <any>undefined;
-      this._links = _data["_links"]
-        ? LinkBase.fromJS(_data["_links"])
-        : <any>undefined;
-    }
-  }
-
-  static fromJS(data: any): ResponseOfUpdateOrderContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new ResponseOfUpdateOrderContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["data"] = this.data ? this.data.toJSON() : <any>undefined;
-    data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
-    return data;
-  }
-}
-
-export interface IResponseOfUpdateOrderContractResponse {
-  data?: UpdateOrderContractResponse | undefined;
-  _links?: LinkBase | undefined;
-}
-
-export class UpdateOrderContractResponse
-  implements IUpdateOrderContractResponse {
-  orderId?: string | undefined;
-
-  constructor(data?: IUpdateOrderContractResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.orderId = _data["orderId"];
-    }
-  }
-
-  static fromJS(data: any): UpdateOrderContractResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new UpdateOrderContractResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["orderId"] = this.orderId;
-    return data;
-  }
-}
-
-export interface IUpdateOrderContractResponse {
-  orderId?: string | undefined;
-}
-
-export enum OrderStatus {
-  Recieved = 1,
-  Pending = 2,
-  Accepted = 3,
-  Canceled = 4,
-  WaitingForDriver = 5,
-  DriverAccepted = 6,
-  DriverRejected = 7,
-  OnTheWay = 8,
-  Done = 9,
-  ReadyOrder = 10,
-}
-
-export class CreatePortionRequest implements ICreatePortionRequest {
-  id!: number;
-  name?: string | undefined;
-  isEnabled!: boolean;
-
-  constructor(data?: ICreatePortionRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.isEnabled = _data["isEnabled"];
-    }
-  }
-
-  static fromJS(data: any): CreatePortionRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new CreatePortionRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["isEnabled"] = this.isEnabled;
-    return data;
-  }
-}
-
-export interface ICreatePortionRequest {
-  id: number;
-  name?: string | undefined;
-  isEnabled: boolean;
-}
-
-export class UpdatePortionSizeRequest implements IUpdatePortionSizeRequest {
-  id!: number;
-  name?: string | undefined;
-  categoryId?: string | undefined;
-
-  constructor(data?: IUpdatePortionSizeRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.categoryId = _data["categoryId"];
-    }
-  }
-
-  static fromJS(data: any): UpdatePortionSizeRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new UpdatePortionSizeRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["categoryId"] = this.categoryId;
-    return data;
-  }
-}
-
-export interface IUpdatePortionSizeRequest {
-  id: number;
-  name?: string | undefined;
-  categoryId?: string | undefined;
-}
-
-export class DeletePortionRequest implements IDeletePortionRequest {
-  id!: number;
-  name?: string | undefined;
-  isEnabled!: boolean;
-
-  constructor(data?: IDeletePortionRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.id = _data["id"];
-      this.name = _data["name"];
-      this.isEnabled = _data["isEnabled"];
-    }
-  }
-
-  static fromJS(data: any): DeletePortionRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new DeletePortionRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["id"] = this.id;
-    data["name"] = this.name;
-    data["isEnabled"] = this.isEnabled;
-    return data;
-  }
-}
-
-export interface IDeletePortionRequest {
-  id: number;
-  name?: string | undefined;
-  isEnabled: boolean;
-}
-
-export class AuthSuccessResponse implements IAuthSuccessResponse {
-  token?: string | undefined;
-  refreshToken?: string | undefined;
-
-  constructor(data?: IAuthSuccessResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.token = _data["token"];
-      this.refreshToken = _data["refreshToken"];
-    }
-  }
-
-  static fromJS(data: any): AuthSuccessResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new AuthSuccessResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["token"] = this.token;
-    data["refreshToken"] = this.refreshToken;
-    return data;
-  }
-}
-
-export interface IAuthSuccessResponse {
-  token?: string | undefined;
-  refreshToken?: string | undefined;
-}
-
-export class AuthFailedResponse implements IAuthFailedResponse {
-  errors?: string[] | undefined;
-
-  constructor(data?: IAuthFailedResponse) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      if (Array.isArray(_data["errors"])) {
-        this.errors = [] as any;
-        for (let item of _data["errors"]) this.errors!.push(item);
-      }
-    }
-  }
-
-  static fromJS(data: any): AuthFailedResponse {
-    data = typeof data === "object" ? data : {};
-    let result = new AuthFailedResponse();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    if (Array.isArray(this.errors)) {
-      data["errors"] = [];
-      for (let item of this.errors) data["errors"].push(item);
-    }
-    return data;
-  }
-}
-
-export interface IAuthFailedResponse {
-  errors?: string[] | undefined;
-}
-
-export class UserRegistrationRequest implements IUserRegistrationRequest {
-  email?: string | undefined;
-  password?: string | undefined;
-
-  constructor(data?: IUserRegistrationRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.email = _data["email"];
-      this.password = _data["password"];
-    }
-  }
-
-  static fromJS(data: any): UserRegistrationRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new UserRegistrationRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["email"] = this.email;
-    data["password"] = this.password;
-    return data;
-  }
-}
-
-export interface IUserRegistrationRequest {
-  email?: string | undefined;
-  password?: string | undefined;
-}
-
-export class UserLoginRequest implements IUserLoginRequest {
-  email?: string | undefined;
-  password?: string | undefined;
-
-  constructor(data?: IUserLoginRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.email = _data["email"];
-      this.password = _data["password"];
-    }
-  }
-
-  static fromJS(data: any): UserLoginRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new UserLoginRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["email"] = this.email;
-    data["password"] = this.password;
-    return data;
-  }
-}
-
-export interface IUserLoginRequest {
-  email?: string | undefined;
-  password?: string | undefined;
-}
-
-export class RefreshTokenRequest implements IRefreshTokenRequest {
-  token?: string | undefined;
-  refreshToken?: string | undefined;
-
-  constructor(data?: IRefreshTokenRequest) {
-    if (data) {
-      for (var property in data) {
-        if (data.hasOwnProperty(property))
-          (<any>this)[property] = (<any>data)[property];
-      }
-    }
-  }
-
-  init(_data?: any) {
-    if (_data) {
-      this.token = _data["token"];
-      this.refreshToken = _data["refreshToken"];
-    }
-  }
-
-  static fromJS(data: any): RefreshTokenRequest {
-    data = typeof data === "object" ? data : {};
-    let result = new RefreshTokenRequest();
-    result.init(data);
-    return result;
-  }
-
-  toJSON(data?: any) {
-    data = typeof data === "object" ? data : {};
-    data["token"] = this.token;
-    data["refreshToken"] = this.refreshToken;
-    return data;
-  }
-}
-
-export interface IRefreshTokenRequest {
-  token?: string | undefined;
-  refreshToken?: string | undefined;
+    dateOccurred: moment.Moment;
+}
+
+export class Store extends EntityBaseOfGuid implements IStore {
+    storeName?: string | undefined;
+    logo?: string | undefined;
+    logoType?: string | undefined;
+    contactPersonName?: string | undefined;
+    contactPersonEmail?: string | undefined;
+    contactPersonPhoneNumber?: string | undefined;
+    isApproved?: boolean | undefined;
+    storeCategory?: StoreStoreCategory[] | undefined;
+    shoppingCenter?: ShoppingCenter | undefined;
+    shoppingCenterId?: string | undefined;
+    owner?: UserProfile | undefined;
+    items?: Item[] | undefined;
+    ownerId?: number | undefined;
+    deletedAt?: moment.Moment | undefined;
+    storeAddressStreet?: string | undefined;
+    storeAddressCity?: City | undefined;
+    storeAddressCityId?: string | undefined;
+    storeAddressState?: State | undefined;
+    storeAddressStateId?: string | undefined;
+    storeAddressPostCode?: string | undefined;
+    shoppingCenterFlow?: string | undefined;
+    shopNumber?: string | undefined;
+    contactPersonJobTitle?: string | undefined;
+    storeContactPhone?: string | undefined;
+    storeContactEmail?: string | undefined;
+    qrImage?: string | undefined;
+    pdfId?: string | undefined;
+    storeContactWebSite?: string | undefined;
+    stepCompleted!: number;
+    storeDescription?: string | undefined;
+    storeAbn?: string | undefined;
+    rejectReason?: string | undefined;
+    isActive!: boolean;
+    sizeFormat?: SizeFormat[] | undefined;
+    colorTypes?: ColorType[] | undefined;
+    pagePosts?: PagePost[] | undefined;
+    unagiCategories?: UnagiCategory[] | undefined;
+
+    constructor(data?: IStore) {
+        super(data);
+        if (!data) {
+            this.isActive = true;
+        }
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.storeName = _data["storeName"];
+            this.logo = _data["logo"];
+            this.logoType = _data["logoType"];
+            this.contactPersonName = _data["contactPersonName"];
+            this.contactPersonEmail = _data["contactPersonEmail"];
+            this.contactPersonPhoneNumber = _data["contactPersonPhoneNumber"];
+            this.isApproved = _data["isApproved"];
+            if (Array.isArray(_data["storeCategory"])) {
+                this.storeCategory = [] as any;
+                for (let item of _data["storeCategory"])
+                    this.storeCategory!.push(StoreStoreCategory.fromJS(item));
+            }
+            this.shoppingCenter = _data["shoppingCenter"] ? ShoppingCenter.fromJS(_data["shoppingCenter"]) : <any>undefined;
+            this.shoppingCenterId = _data["shoppingCenterId"];
+            this.owner = _data["owner"] ? UserProfile.fromJS(_data["owner"]) : <any>undefined;
+            if (Array.isArray(_data["items"])) {
+                this.items = [] as any;
+                for (let item of _data["items"])
+                    this.items!.push(Item.fromJS(item));
+            }
+            this.ownerId = _data["ownerId"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            this.storeAddressStreet = _data["storeAddressStreet"];
+            this.storeAddressCity = _data["storeAddressCity"] ? City.fromJS(_data["storeAddressCity"]) : <any>undefined;
+            this.storeAddressCityId = _data["storeAddressCityId"];
+            this.storeAddressState = _data["storeAddressState"] ? State.fromJS(_data["storeAddressState"]) : <any>undefined;
+            this.storeAddressStateId = _data["storeAddressStateId"];
+            this.storeAddressPostCode = _data["storeAddressPostCode"];
+            this.shoppingCenterFlow = _data["shoppingCenterFlow"];
+            this.shopNumber = _data["shopNumber"];
+            this.contactPersonJobTitle = _data["contactPersonJobTitle"];
+            this.storeContactPhone = _data["storeContactPhone"];
+            this.storeContactEmail = _data["storeContactEmail"];
+            this.qrImage = _data["qrImage"];
+            this.pdfId = _data["pdfId"];
+            this.storeContactWebSite = _data["storeContactWebSite"];
+            this.stepCompleted = _data["stepCompleted"];
+            this.storeDescription = _data["storeDescription"];
+            this.storeAbn = _data["storeAbn"];
+            this.rejectReason = _data["rejectReason"];
+            this.isActive = _data["isActive"] !== undefined ? _data["isActive"] : true;
+            if (Array.isArray(_data["sizeFormat"])) {
+                this.sizeFormat = [] as any;
+                for (let item of _data["sizeFormat"])
+                    this.sizeFormat!.push(SizeFormat.fromJS(item));
+            }
+            if (Array.isArray(_data["colorTypes"])) {
+                this.colorTypes = [] as any;
+                for (let item of _data["colorTypes"])
+                    this.colorTypes!.push(ColorType.fromJS(item));
+            }
+            if (Array.isArray(_data["pagePosts"])) {
+                this.pagePosts = [] as any;
+                for (let item of _data["pagePosts"])
+                    this.pagePosts!.push(PagePost.fromJS(item));
+            }
+            if (Array.isArray(_data["unagiCategories"])) {
+                this.unagiCategories = [] as any;
+                for (let item of _data["unagiCategories"])
+                    this.unagiCategories!.push(UnagiCategory.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): Store {
+        data = typeof data === 'object' ? data : {};
+        let result = new Store();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["storeName"] = this.storeName;
+        data["logo"] = this.logo;
+        data["logoType"] = this.logoType;
+        data["contactPersonName"] = this.contactPersonName;
+        data["contactPersonEmail"] = this.contactPersonEmail;
+        data["contactPersonPhoneNumber"] = this.contactPersonPhoneNumber;
+        data["isApproved"] = this.isApproved;
+        if (Array.isArray(this.storeCategory)) {
+            data["storeCategory"] = [];
+            for (let item of this.storeCategory)
+                data["storeCategory"].push(item.toJSON());
+        }
+        data["shoppingCenter"] = this.shoppingCenter ? this.shoppingCenter.toJSON() : <any>undefined;
+        data["shoppingCenterId"] = this.shoppingCenterId;
+        data["owner"] = this.owner ? this.owner.toJSON() : <any>undefined;
+        if (Array.isArray(this.items)) {
+            data["items"] = [];
+            for (let item of this.items)
+                data["items"].push(item.toJSON());
+        }
+        data["ownerId"] = this.ownerId;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        data["storeAddressStreet"] = this.storeAddressStreet;
+        data["storeAddressCity"] = this.storeAddressCity ? this.storeAddressCity.toJSON() : <any>undefined;
+        data["storeAddressCityId"] = this.storeAddressCityId;
+        data["storeAddressState"] = this.storeAddressState ? this.storeAddressState.toJSON() : <any>undefined;
+        data["storeAddressStateId"] = this.storeAddressStateId;
+        data["storeAddressPostCode"] = this.storeAddressPostCode;
+        data["shoppingCenterFlow"] = this.shoppingCenterFlow;
+        data["shopNumber"] = this.shopNumber;
+        data["contactPersonJobTitle"] = this.contactPersonJobTitle;
+        data["storeContactPhone"] = this.storeContactPhone;
+        data["storeContactEmail"] = this.storeContactEmail;
+        data["qrImage"] = this.qrImage;
+        data["pdfId"] = this.pdfId;
+        data["storeContactWebSite"] = this.storeContactWebSite;
+        data["stepCompleted"] = this.stepCompleted;
+        data["storeDescription"] = this.storeDescription;
+        data["storeAbn"] = this.storeAbn;
+        data["rejectReason"] = this.rejectReason;
+        data["isActive"] = this.isActive;
+        if (Array.isArray(this.sizeFormat)) {
+            data["sizeFormat"] = [];
+            for (let item of this.sizeFormat)
+                data["sizeFormat"].push(item.toJSON());
+        }
+        if (Array.isArray(this.colorTypes)) {
+            data["colorTypes"] = [];
+            for (let item of this.colorTypes)
+                data["colorTypes"].push(item.toJSON());
+        }
+        if (Array.isArray(this.pagePosts)) {
+            data["pagePosts"] = [];
+            for (let item of this.pagePosts)
+                data["pagePosts"].push(item.toJSON());
+        }
+        if (Array.isArray(this.unagiCategories)) {
+            data["unagiCategories"] = [];
+            for (let item of this.unagiCategories)
+                data["unagiCategories"].push(item.toJSON());
+        }
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IStore extends IEntityBaseOfGuid {
+    storeName?: string | undefined;
+    logo?: string | undefined;
+    logoType?: string | undefined;
+    contactPersonName?: string | undefined;
+    contactPersonEmail?: string | undefined;
+    contactPersonPhoneNumber?: string | undefined;
+    isApproved?: boolean | undefined;
+    storeCategory?: StoreStoreCategory[] | undefined;
+    shoppingCenter?: ShoppingCenter | undefined;
+    shoppingCenterId?: string | undefined;
+    owner?: UserProfile | undefined;
+    items?: Item[] | undefined;
+    ownerId?: number | undefined;
+    deletedAt?: moment.Moment | undefined;
+    storeAddressStreet?: string | undefined;
+    storeAddressCity?: City | undefined;
+    storeAddressCityId?: string | undefined;
+    storeAddressState?: State | undefined;
+    storeAddressStateId?: string | undefined;
+    storeAddressPostCode?: string | undefined;
+    shoppingCenterFlow?: string | undefined;
+    shopNumber?: string | undefined;
+    contactPersonJobTitle?: string | undefined;
+    storeContactPhone?: string | undefined;
+    storeContactEmail?: string | undefined;
+    qrImage?: string | undefined;
+    pdfId?: string | undefined;
+    storeContactWebSite?: string | undefined;
+    stepCompleted: number;
+    storeDescription?: string | undefined;
+    storeAbn?: string | undefined;
+    rejectReason?: string | undefined;
+    isActive: boolean;
+    sizeFormat?: SizeFormat[] | undefined;
+    colorTypes?: ColorType[] | undefined;
+    pagePosts?: PagePost[] | undefined;
+    unagiCategories?: UnagiCategory[] | undefined;
+}
+
+export class StoreStoreCategory implements IStoreStoreCategory {
+    store?: Store | undefined;
+    storeId!: string;
+    storeCategory?: StoreCategory | undefined;
+    storeCategoryId!: string;
+
+    constructor(data?: IStoreStoreCategory) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.store = _data["store"] ? Store.fromJS(_data["store"]) : <any>undefined;
+            this.storeId = _data["storeId"];
+            this.storeCategory = _data["storeCategory"] ? StoreCategory.fromJS(_data["storeCategory"]) : <any>undefined;
+            this.storeCategoryId = _data["storeCategoryId"];
+        }
+    }
+
+    static fromJS(data: any): StoreStoreCategory {
+        data = typeof data === 'object' ? data : {};
+        let result = new StoreStoreCategory();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["store"] = this.store ? this.store.toJSON() : <any>undefined;
+        data["storeId"] = this.storeId;
+        data["storeCategory"] = this.storeCategory ? this.storeCategory.toJSON() : <any>undefined;
+        data["storeCategoryId"] = this.storeCategoryId;
+        return data; 
+    }
+}
+
+export interface IStoreStoreCategory {
+    store?: Store | undefined;
+    storeId: string;
+    storeCategory?: StoreCategory | undefined;
+    storeCategoryId: string;
+}
+
+export class StoreCategory extends EntityBaseOfGuid implements IStoreCategory {
+    name?: string | undefined;
+    description?: string | undefined;
+    iconId?: string | undefined;
+    iconType?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+
+    constructor(data?: IStoreCategory) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.name = _data["name"];
+            this.description = _data["description"];
+            this.iconId = _data["iconId"];
+            this.iconType = _data["iconType"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): StoreCategory {
+        data = typeof data === 'object' ? data : {};
+        let result = new StoreCategory();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["description"] = this.description;
+        data["iconId"] = this.iconId;
+        data["iconType"] = this.iconType;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IStoreCategory extends IEntityBaseOfGuid {
+    name?: string | undefined;
+    description?: string | undefined;
+    iconId?: string | undefined;
+    iconType?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+}
+
+export class ShoppingCenter extends EntityBaseOfGuid implements IShoppingCenter {
+    name?: string | undefined;
+
+    constructor(data?: IShoppingCenter) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.name = _data["name"];
+        }
+    }
+
+    static fromJS(data: any): ShoppingCenter {
+        data = typeof data === 'object' ? data : {};
+        let result = new ShoppingCenter();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IShoppingCenter extends IEntityBaseOfGuid {
+    name?: string | undefined;
+}
+
+export abstract class EntityBaseOfInteger implements IEntityBaseOfInteger {
+    events?: BaseDomainEvent[] | undefined;
+    id!: number;
+    createdBy?: string | undefined;
+    lastModifiedBy?: string | undefined;
+    createdAt!: moment.Moment;
+    lastModifiedAt?: moment.Moment | undefined;
+
+    constructor(data?: IEntityBaseOfInteger) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["events"])) {
+                this.events = [] as any;
+                for (let item of _data["events"])
+                    this.events!.push(BaseDomainEvent.fromJS(item));
+            }
+            this.id = _data["id"];
+            this.createdBy = _data["createdBy"];
+            this.lastModifiedBy = _data["lastModifiedBy"];
+            this.createdAt = _data["createdAt"] ? moment(_data["createdAt"].toString()) : <any>undefined;
+            this.lastModifiedAt = _data["lastModifiedAt"] ? moment(_data["lastModifiedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): EntityBaseOfInteger {
+        data = typeof data === 'object' ? data : {};
+        throw new Error("The abstract class 'EntityBaseOfInteger' cannot be instantiated.");
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.events)) {
+            data["events"] = [];
+            for (let item of this.events)
+                data["events"].push(item.toJSON());
+        }
+        data["id"] = this.id;
+        data["createdBy"] = this.createdBy;
+        data["lastModifiedBy"] = this.lastModifiedBy;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        data["lastModifiedAt"] = this.lastModifiedAt ? this.lastModifiedAt.toISOString() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IEntityBaseOfInteger {
+    events?: BaseDomainEvent[] | undefined;
+    id: number;
+    createdBy?: string | undefined;
+    lastModifiedBy?: string | undefined;
+    createdAt: moment.Moment;
+    lastModifiedAt?: moment.Moment | undefined;
+}
+
+export class UserProfile extends EntityBaseOfInteger implements IUserProfile {
+    profileUniqueId!: string;
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    address?: string | undefined;
+    street?: string | undefined;
+    city?: string | undefined;
+    state?: string | undefined;
+    phoneNumber?: string | undefined;
+    postalCode?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    gender?: string | undefined;
+    timeZone?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+    deviceId?: string | undefined;
+    pushToken?: string | undefined;
+    isFtuxCompleted!: boolean;
+
+    constructor(data?: IUserProfile) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.profileUniqueId = _data["profileUniqueId"];
+            this.identityId = _data["identityId"];
+            this.firstName = _data["firstName"];
+            this.lastName = _data["lastName"];
+            this.address = _data["address"];
+            this.street = _data["street"];
+            this.city = _data["city"];
+            this.state = _data["state"];
+            this.phoneNumber = _data["phoneNumber"];
+            this.postalCode = _data["postalCode"];
+            this.email = _data["email"];
+            this.profilePic = _data["profilePic"];
+            this.dateOfBirth = _data["dateOfBirth"] ? moment(_data["dateOfBirth"].toString()) : <any>undefined;
+            this.gender = _data["gender"];
+            this.timeZone = _data["timeZone"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            this.deviceId = _data["deviceId"];
+            this.pushToken = _data["pushToken"];
+            this.isFtuxCompleted = _data["isFtuxCompleted"];
+        }
+    }
+
+    static fromJS(data: any): UserProfile {
+        data = typeof data === 'object' ? data : {};
+        let result = new UserProfile();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["profileUniqueId"] = this.profileUniqueId;
+        data["identityId"] = this.identityId;
+        data["firstName"] = this.firstName;
+        data["lastName"] = this.lastName;
+        data["address"] = this.address;
+        data["street"] = this.street;
+        data["city"] = this.city;
+        data["state"] = this.state;
+        data["phoneNumber"] = this.phoneNumber;
+        data["postalCode"] = this.postalCode;
+        data["email"] = this.email;
+        data["profilePic"] = this.profilePic;
+        data["dateOfBirth"] = this.dateOfBirth ? this.dateOfBirth.toISOString() : <any>undefined;
+        data["gender"] = this.gender;
+        data["timeZone"] = this.timeZone;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        data["deviceId"] = this.deviceId;
+        data["pushToken"] = this.pushToken;
+        data["isFtuxCompleted"] = this.isFtuxCompleted;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IUserProfile extends IEntityBaseOfInteger {
+    profileUniqueId: string;
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    address?: string | undefined;
+    street?: string | undefined;
+    city?: string | undefined;
+    state?: string | undefined;
+    phoneNumber?: string | undefined;
+    postalCode?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    gender?: string | undefined;
+    timeZone?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+    deviceId?: string | undefined;
+    pushToken?: string | undefined;
+    isFtuxCompleted: boolean;
+}
+
+export class City extends EntityBaseOfGuid implements ICity {
+    name?: string | undefined;
+    state?: State | undefined;
+    stateId?: string | undefined;
+
+    constructor(data?: ICity) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.name = _data["name"];
+            this.state = _data["state"] ? State.fromJS(_data["state"]) : <any>undefined;
+            this.stateId = _data["stateId"];
+        }
+    }
+
+    static fromJS(data: any): City {
+        data = typeof data === 'object' ? data : {};
+        let result = new City();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["state"] = this.state ? this.state.toJSON() : <any>undefined;
+        data["stateId"] = this.stateId;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface ICity extends IEntityBaseOfGuid {
+    name?: string | undefined;
+    state?: State | undefined;
+    stateId?: string | undefined;
+}
+
+export class State extends EntityBaseOfGuid implements IState {
+    name?: string | undefined;
+
+    constructor(data?: IState) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.name = _data["name"];
+        }
+    }
+
+    static fromJS(data: any): State {
+        data = typeof data === 'object' ? data : {};
+        let result = new State();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IState extends IEntityBaseOfGuid {
+    name?: string | undefined;
+}
+
+export class SizeFormat extends EntityBaseOfInteger implements ISizeFormat {
+    name?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+    sizes?: Size[] | undefined;
+    store?: Store | undefined;
+    storeId!: string;
+
+    constructor(data?: ISizeFormat) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.name = _data["name"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            if (Array.isArray(_data["sizes"])) {
+                this.sizes = [] as any;
+                for (let item of _data["sizes"])
+                    this.sizes!.push(Size.fromJS(item));
+            }
+            this.store = _data["store"] ? Store.fromJS(_data["store"]) : <any>undefined;
+            this.storeId = _data["storeId"];
+        }
+    }
+
+    static fromJS(data: any): SizeFormat {
+        data = typeof data === 'object' ? data : {};
+        let result = new SizeFormat();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        if (Array.isArray(this.sizes)) {
+            data["sizes"] = [];
+            for (let item of this.sizes)
+                data["sizes"].push(item.toJSON());
+        }
+        data["store"] = this.store ? this.store.toJSON() : <any>undefined;
+        data["storeId"] = this.storeId;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface ISizeFormat extends IEntityBaseOfInteger {
+    name?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+    sizes?: Size[] | undefined;
+    store?: Store | undefined;
+    storeId: string;
+}
+
+export class Size extends EntityBaseOfInteger implements ISize {
+    name?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+    sizeFormat?: SizeFormat | undefined;
+    sizeFormatId!: number;
+
+    constructor(data?: ISize) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.name = _data["name"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            this.sizeFormat = _data["sizeFormat"] ? SizeFormat.fromJS(_data["sizeFormat"]) : <any>undefined;
+            this.sizeFormatId = _data["sizeFormatId"];
+        }
+    }
+
+    static fromJS(data: any): Size {
+        data = typeof data === 'object' ? data : {};
+        let result = new Size();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        data["sizeFormat"] = this.sizeFormat ? this.sizeFormat.toJSON() : <any>undefined;
+        data["sizeFormatId"] = this.sizeFormatId;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface ISize extends IEntityBaseOfInteger {
+    name?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+    sizeFormat?: SizeFormat | undefined;
+    sizeFormatId: number;
+}
+
+export class ColorType extends EntityBaseOfInteger implements IColorType {
+    name?: string | undefined;
+    colors?: Color[] | undefined;
+    store?: Store | undefined;
+    storeId!: string;
+    deletedAt?: moment.Moment | undefined;
+
+    constructor(data?: IColorType) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.name = _data["name"];
+            if (Array.isArray(_data["colors"])) {
+                this.colors = [] as any;
+                for (let item of _data["colors"])
+                    this.colors!.push(Color.fromJS(item));
+            }
+            this.store = _data["store"] ? Store.fromJS(_data["store"]) : <any>undefined;
+            this.storeId = _data["storeId"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ColorType {
+        data = typeof data === 'object' ? data : {};
+        let result = new ColorType();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        if (Array.isArray(this.colors)) {
+            data["colors"] = [];
+            for (let item of this.colors)
+                data["colors"].push(item.toJSON());
+        }
+        data["store"] = this.store ? this.store.toJSON() : <any>undefined;
+        data["storeId"] = this.storeId;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IColorType extends IEntityBaseOfInteger {
+    name?: string | undefined;
+    colors?: Color[] | undefined;
+    store?: Store | undefined;
+    storeId: string;
+    deletedAt?: moment.Moment | undefined;
+}
+
+export class Color extends EntityBaseOfInteger implements IColor {
+    name?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+    colorType?: ColorType | undefined;
+    colorTypeId!: number;
+
+    constructor(data?: IColor) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.name = _data["name"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            this.colorType = _data["colorType"] ? ColorType.fromJS(_data["colorType"]) : <any>undefined;
+            this.colorTypeId = _data["colorTypeId"];
+        }
+    }
+
+    static fromJS(data: any): Color {
+        data = typeof data === 'object' ? data : {};
+        let result = new Color();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        data["colorType"] = this.colorType ? this.colorType.toJSON() : <any>undefined;
+        data["colorTypeId"] = this.colorTypeId;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IColor extends IEntityBaseOfInteger {
+    name?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+    colorType?: ColorType | undefined;
+    colorTypeId: number;
+}
+
+export class PagePost extends EntityBaseOfGuid implements IPagePost {
+    title?: string | undefined;
+    description?: string | undefined;
+    pagePostTags?: PagePostTag[] | undefined;
+    pagePostImages?: PagePostImage[] | undefined;
+    store?: Store | undefined;
+    storeId!: string;
+    deletedAt?: moment.Moment | undefined;
+
+    constructor(data?: IPagePost) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.title = _data["title"];
+            this.description = _data["description"];
+            if (Array.isArray(_data["pagePostTags"])) {
+                this.pagePostTags = [] as any;
+                for (let item of _data["pagePostTags"])
+                    this.pagePostTags!.push(PagePostTag.fromJS(item));
+            }
+            if (Array.isArray(_data["pagePostImages"])) {
+                this.pagePostImages = [] as any;
+                for (let item of _data["pagePostImages"])
+                    this.pagePostImages!.push(PagePostImage.fromJS(item));
+            }
+            this.store = _data["store"] ? Store.fromJS(_data["store"]) : <any>undefined;
+            this.storeId = _data["storeId"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagePost {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagePost();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["title"] = this.title;
+        data["description"] = this.description;
+        if (Array.isArray(this.pagePostTags)) {
+            data["pagePostTags"] = [];
+            for (let item of this.pagePostTags)
+                data["pagePostTags"].push(item.toJSON());
+        }
+        if (Array.isArray(this.pagePostImages)) {
+            data["pagePostImages"] = [];
+            for (let item of this.pagePostImages)
+                data["pagePostImages"].push(item.toJSON());
+        }
+        data["store"] = this.store ? this.store.toJSON() : <any>undefined;
+        data["storeId"] = this.storeId;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IPagePost extends IEntityBaseOfGuid {
+    title?: string | undefined;
+    description?: string | undefined;
+    pagePostTags?: PagePostTag[] | undefined;
+    pagePostImages?: PagePostImage[] | undefined;
+    store?: Store | undefined;
+    storeId: string;
+    deletedAt?: moment.Moment | undefined;
+}
+
+export class PagePostTag implements IPagePostTag {
+    pagePostId!: string;
+    pagePost?: PagePost | undefined;
+    tagId!: string;
+    tag?: Tag | undefined;
+
+    constructor(data?: IPagePostTag) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.pagePostId = _data["pagePostId"];
+            this.pagePost = _data["pagePost"] ? PagePost.fromJS(_data["pagePost"]) : <any>undefined;
+            this.tagId = _data["tagId"];
+            this.tag = _data["tag"] ? Tag.fromJS(_data["tag"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagePostTag {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagePostTag();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["pagePostId"] = this.pagePostId;
+        data["pagePost"] = this.pagePost ? this.pagePost.toJSON() : <any>undefined;
+        data["tagId"] = this.tagId;
+        data["tag"] = this.tag ? this.tag.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagePostTag {
+    pagePostId: string;
+    pagePost?: PagePost | undefined;
+    tagId: string;
+    tag?: Tag | undefined;
+}
+
+export class PagePostImage extends EntityBaseOfGuid implements IPagePostImage {
+    pagePost?: PagePost | undefined;
+    pagePostId!: string;
+    image?: string | undefined;
+    imageType?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+
+    constructor(data?: IPagePostImage) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.pagePost = _data["pagePost"] ? PagePost.fromJS(_data["pagePost"]) : <any>undefined;
+            this.pagePostId = _data["pagePostId"];
+            this.image = _data["image"];
+            this.imageType = _data["imageType"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagePostImage {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagePostImage();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["pagePost"] = this.pagePost ? this.pagePost.toJSON() : <any>undefined;
+        data["pagePostId"] = this.pagePostId;
+        data["image"] = this.image;
+        data["imageType"] = this.imageType;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IPagePostImage extends IEntityBaseOfGuid {
+    pagePost?: PagePost | undefined;
+    pagePostId: string;
+    image?: string | undefined;
+    imageType?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+}
+
+export class UnagiCategory extends EntityBaseOfGuid implements IUnagiCategory {
+    name?: string | undefined;
+    image?: string | undefined;
+    imageType?: string | undefined;
+    unagiCategoryTags?: UnagiCategoryTag[] | undefined;
+    store?: Store | undefined;
+    storeId!: string;
+    deletedAt?: moment.Moment | undefined;
+
+    constructor(data?: IUnagiCategory) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.name = _data["name"];
+            this.image = _data["image"];
+            this.imageType = _data["imageType"];
+            if (Array.isArray(_data["unagiCategoryTags"])) {
+                this.unagiCategoryTags = [] as any;
+                for (let item of _data["unagiCategoryTags"])
+                    this.unagiCategoryTags!.push(UnagiCategoryTag.fromJS(item));
+            }
+            this.store = _data["store"] ? Store.fromJS(_data["store"]) : <any>undefined;
+            this.storeId = _data["storeId"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): UnagiCategory {
+        data = typeof data === 'object' ? data : {};
+        let result = new UnagiCategory();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["image"] = this.image;
+        data["imageType"] = this.imageType;
+        if (Array.isArray(this.unagiCategoryTags)) {
+            data["unagiCategoryTags"] = [];
+            for (let item of this.unagiCategoryTags)
+                data["unagiCategoryTags"].push(item.toJSON());
+        }
+        data["store"] = this.store ? this.store.toJSON() : <any>undefined;
+        data["storeId"] = this.storeId;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IUnagiCategory extends IEntityBaseOfGuid {
+    name?: string | undefined;
+    image?: string | undefined;
+    imageType?: string | undefined;
+    unagiCategoryTags?: UnagiCategoryTag[] | undefined;
+    store?: Store | undefined;
+    storeId: string;
+    deletedAt?: moment.Moment | undefined;
+}
+
+export class UnagiCategoryTag implements IUnagiCategoryTag {
+    unagiCategoryId!: string;
+    unagiCategory?: UnagiCategory | undefined;
+    tagId!: string;
+    tag?: Tag | undefined;
+
+    constructor(data?: IUnagiCategoryTag) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.unagiCategoryId = _data["unagiCategoryId"];
+            this.unagiCategory = _data["unagiCategory"] ? UnagiCategory.fromJS(_data["unagiCategory"]) : <any>undefined;
+            this.tagId = _data["tagId"];
+            this.tag = _data["tag"] ? Tag.fromJS(_data["tag"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): UnagiCategoryTag {
+        data = typeof data === 'object' ? data : {};
+        let result = new UnagiCategoryTag();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["unagiCategoryId"] = this.unagiCategoryId;
+        data["unagiCategory"] = this.unagiCategory ? this.unagiCategory.toJSON() : <any>undefined;
+        data["tagId"] = this.tagId;
+        data["tag"] = this.tag ? this.tag.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IUnagiCategoryTag {
+    unagiCategoryId: string;
+    unagiCategory?: UnagiCategory | undefined;
+    tagId: string;
+    tag?: Tag | undefined;
+}
+
+export class ItemotherImage extends EntityBaseOfGuid implements IItemotherImage {
+    item?: Item | undefined;
+    itemId!: string;
+    image?: string | undefined;
+    imageType?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+
+    constructor(data?: IItemotherImage) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.item = _data["item"] ? Item.fromJS(_data["item"]) : <any>undefined;
+            this.itemId = _data["itemId"];
+            this.image = _data["image"];
+            this.imageType = _data["imageType"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ItemotherImage {
+        data = typeof data === 'object' ? data : {};
+        let result = new ItemotherImage();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["item"] = this.item ? this.item.toJSON() : <any>undefined;
+        data["itemId"] = this.itemId;
+        data["image"] = this.image;
+        data["imageType"] = this.imageType;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IItemotherImage extends IEntityBaseOfGuid {
+    item?: Item | undefined;
+    itemId: string;
+    image?: string | undefined;
+    imageType?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+}
+
+export enum ItemQuantityType {
+    None = 0,
+    Yes = 1,
+}
+
+export class ItemVarienceOtherImage extends EntityBaseOfGuid implements IItemVarienceOtherImage {
+    itemVarience?: ItemVarience | undefined;
+    itemVarienceId!: string;
+    image?: string | undefined;
+    imageType?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+
+    constructor(data?: IItemVarienceOtherImage) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.itemVarience = _data["itemVarience"] ? ItemVarience.fromJS(_data["itemVarience"]) : <any>undefined;
+            this.itemVarienceId = _data["itemVarienceId"];
+            this.image = _data["image"];
+            this.imageType = _data["imageType"];
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ItemVarienceOtherImage {
+        data = typeof data === 'object' ? data : {};
+        let result = new ItemVarienceOtherImage();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["itemVarience"] = this.itemVarience ? this.itemVarience.toJSON() : <any>undefined;
+        data["itemVarienceId"] = this.itemVarienceId;
+        data["image"] = this.image;
+        data["imageType"] = this.imageType;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IItemVarienceOtherImage extends IEntityBaseOfGuid {
+    itemVarience?: ItemVarience | undefined;
+    itemVarienceId: string;
+    image?: string | undefined;
+    imageType?: string | undefined;
+    deletedAt?: moment.Moment | undefined;
+}
+
+export class Deal extends EntityBaseOfGuid implements IDeal {
+    deletedAt?: moment.Moment | undefined;
+    dealType!: DealType;
+    startDate?: moment.Moment | undefined;
+    endDate?: moment.Moment | undefined;
+    dealItemVariances?: DealItem[] | undefined;
+    itemVarianceId!: string;
+    dealTitle?: string | undefined;
+    dealDescription?: string | undefined;
+    dealTags?: DealTag[] | undefined;
+    discountType?: DealDiscountType | undefined;
+    discountAmount?: number | undefined;
+    images?: DealImage[] | undefined;
+    status!: DealStatus;
+    store?: Store | undefined;
+    storeId?: string | undefined;
+    submitDate?: moment.Moment | undefined;
+    isEnabled!: boolean;
+    totalAmount!: number;
+    totalItemValue!: number;
+    isfavourite!: boolean;
+
+    constructor(data?: IDeal) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            this.dealType = _data["dealType"];
+            this.startDate = _data["startDate"] ? moment(_data["startDate"].toString()) : <any>undefined;
+            this.endDate = _data["endDate"] ? moment(_data["endDate"].toString()) : <any>undefined;
+            if (Array.isArray(_data["dealItemVariances"])) {
+                this.dealItemVariances = [] as any;
+                for (let item of _data["dealItemVariances"])
+                    this.dealItemVariances!.push(DealItem.fromJS(item));
+            }
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.dealTitle = _data["dealTitle"];
+            this.dealDescription = _data["dealDescription"];
+            if (Array.isArray(_data["dealTags"])) {
+                this.dealTags = [] as any;
+                for (let item of _data["dealTags"])
+                    this.dealTags!.push(DealTag.fromJS(item));
+            }
+            this.discountType = _data["discountType"];
+            this.discountAmount = _data["discountAmount"];
+            if (Array.isArray(_data["images"])) {
+                this.images = [] as any;
+                for (let item of _data["images"])
+                    this.images!.push(DealImage.fromJS(item));
+            }
+            this.status = _data["status"];
+            this.store = _data["store"] ? Store.fromJS(_data["store"]) : <any>undefined;
+            this.storeId = _data["storeId"];
+            this.submitDate = _data["submitDate"] ? moment(_data["submitDate"].toString()) : <any>undefined;
+            this.isEnabled = _data["isEnabled"];
+            this.totalAmount = _data["totalAmount"];
+            this.totalItemValue = _data["totalItemValue"];
+            this.isfavourite = _data["isfavourite"];
+        }
+    }
+
+    static fromJS(data: any): Deal {
+        data = typeof data === 'object' ? data : {};
+        let result = new Deal();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        data["dealType"] = this.dealType;
+        data["startDate"] = this.startDate ? this.startDate.toISOString() : <any>undefined;
+        data["endDate"] = this.endDate ? this.endDate.toISOString() : <any>undefined;
+        if (Array.isArray(this.dealItemVariances)) {
+            data["dealItemVariances"] = [];
+            for (let item of this.dealItemVariances)
+                data["dealItemVariances"].push(item.toJSON());
+        }
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["dealTitle"] = this.dealTitle;
+        data["dealDescription"] = this.dealDescription;
+        if (Array.isArray(this.dealTags)) {
+            data["dealTags"] = [];
+            for (let item of this.dealTags)
+                data["dealTags"].push(item.toJSON());
+        }
+        data["discountType"] = this.discountType;
+        data["discountAmount"] = this.discountAmount;
+        if (Array.isArray(this.images)) {
+            data["images"] = [];
+            for (let item of this.images)
+                data["images"].push(item.toJSON());
+        }
+        data["status"] = this.status;
+        data["store"] = this.store ? this.store.toJSON() : <any>undefined;
+        data["storeId"] = this.storeId;
+        data["submitDate"] = this.submitDate ? this.submitDate.toISOString() : <any>undefined;
+        data["isEnabled"] = this.isEnabled;
+        data["totalAmount"] = this.totalAmount;
+        data["totalItemValue"] = this.totalItemValue;
+        data["isfavourite"] = this.isfavourite;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IDeal extends IEntityBaseOfGuid {
+    deletedAt?: moment.Moment | undefined;
+    dealType: DealType;
+    startDate?: moment.Moment | undefined;
+    endDate?: moment.Moment | undefined;
+    dealItemVariances?: DealItem[] | undefined;
+    itemVarianceId: string;
+    dealTitle?: string | undefined;
+    dealDescription?: string | undefined;
+    dealTags?: DealTag[] | undefined;
+    discountType?: DealDiscountType | undefined;
+    discountAmount?: number | undefined;
+    images?: DealImage[] | undefined;
+    status: DealStatus;
+    store?: Store | undefined;
+    storeId?: string | undefined;
+    submitDate?: moment.Moment | undefined;
+    isEnabled: boolean;
+    totalAmount: number;
+    totalItemValue: number;
+    isfavourite: boolean;
+}
+
+export class DealTag extends EntityBaseOfGuid implements IDealTag {
+    tag?: Tag | undefined;
+    tagId!: string;
+    deal?: Deal | undefined;
+    dealId!: string;
+
+    constructor(data?: IDealTag) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.tag = _data["tag"] ? Tag.fromJS(_data["tag"]) : <any>undefined;
+            this.tagId = _data["tagId"];
+            this.deal = _data["deal"] ? Deal.fromJS(_data["deal"]) : <any>undefined;
+            this.dealId = _data["dealId"];
+        }
+    }
+
+    static fromJS(data: any): DealTag {
+        data = typeof data === 'object' ? data : {};
+        let result = new DealTag();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["tag"] = this.tag ? this.tag.toJSON() : <any>undefined;
+        data["tagId"] = this.tagId;
+        data["deal"] = this.deal ? this.deal.toJSON() : <any>undefined;
+        data["dealId"] = this.dealId;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface IDealTag extends IEntityBaseOfGuid {
+    tag?: Tag | undefined;
+    tagId: string;
+    deal?: Deal | undefined;
+    dealId: string;
+}
+
+export enum DealDiscountType {
+    Percentage = 0,
+    Fixed = 1,
+}
+
+export class DealImage implements IDealImage {
+    deal?: Deal | undefined;
+    dealId!: string;
+    image?: string | undefined;
+    imageUrl?: string | undefined;
+
+    constructor(data?: IDealImage) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.deal = _data["deal"] ? Deal.fromJS(_data["deal"]) : <any>undefined;
+            this.dealId = _data["dealId"];
+            this.image = _data["image"];
+            this.imageUrl = _data["imageUrl"];
+        }
+    }
+
+    static fromJS(data: any): DealImage {
+        data = typeof data === 'object' ? data : {};
+        let result = new DealImage();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["deal"] = this.deal ? this.deal.toJSON() : <any>undefined;
+        data["dealId"] = this.dealId;
+        data["image"] = this.image;
+        data["imageUrl"] = this.imageUrl;
+        return data; 
+    }
+}
+
+export interface IDealImage {
+    deal?: Deal | undefined;
+    dealId: string;
+    image?: string | undefined;
+    imageUrl?: string | undefined;
+}
+
+export enum DealStatus {
+    Draft = 0,
+    Open = 1,
+    Accepted = 2,
+    Rejected = 3,
+    ItemDisabled = 4,
+    ItemVarienceDisabled = 5,
+    ItemVarienceDeleted = 6,
+    ActiveNow = 7,
+    All = 8,
+    Disabled = 9,
+    DraftAndOpen = 10,
+}
+
+export class LinkBase implements ILinkBase {
+    self?: LinkHref | undefined;
+
+    constructor(data?: ILinkBase) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.self = _data["self"] ? LinkHref.fromJS(_data["self"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): LinkBase {
+        data = typeof data === 'object' ? data : {};
+        let result = new LinkBase();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["self"] = this.self ? this.self.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface ILinkBase {
+    self?: LinkHref | undefined;
+}
+
+export class Links extends LinkBase implements ILinks {
+    next?: LinkHref | undefined;
+    prev?: LinkHref | undefined;
+    first?: LinkHref | undefined;
+    last?: LinkHref | undefined;
+
+    constructor(data?: ILinks) {
+        super(data);
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.next = _data["next"] ? LinkHref.fromJS(_data["next"]) : <any>undefined;
+            this.prev = _data["prev"] ? LinkHref.fromJS(_data["prev"]) : <any>undefined;
+            this.first = _data["first"] ? LinkHref.fromJS(_data["first"]) : <any>undefined;
+            this.last = _data["last"] ? LinkHref.fromJS(_data["last"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): Links {
+        data = typeof data === 'object' ? data : {};
+        let result = new Links();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["next"] = this.next ? this.next.toJSON() : <any>undefined;
+        data["prev"] = this.prev ? this.prev.toJSON() : <any>undefined;
+        data["first"] = this.first ? this.first.toJSON() : <any>undefined;
+        data["last"] = this.last ? this.last.toJSON() : <any>undefined;
+        super.toJSON(data);
+        return data; 
+    }
+}
+
+export interface ILinks extends ILinkBase {
+    next?: LinkHref | undefined;
+    prev?: LinkHref | undefined;
+    first?: LinkHref | undefined;
+    last?: LinkHref | undefined;
+}
+
+export class LinkHref implements ILinkHref {
+    href?: string | undefined;
+
+    constructor(data?: ILinkHref) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.href = _data["href"];
+        }
+    }
+
+    static fromJS(data: any): LinkHref {
+        data = typeof data === 'object' ? data : {};
+        let result = new LinkHref();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["href"] = this.href;
+        return data; 
+    }
+}
+
+export interface ILinkHref {
+    href?: string | undefined;
+}
+
+export class BadResponse implements IBadResponse {
+    errors?: BadResponseHolder[] | undefined;
+
+    constructor(data?: IBadResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["errors"])) {
+                this.errors = [] as any;
+                for (let item of _data["errors"])
+                    this.errors!.push(BadResponseHolder.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): BadResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new BadResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.errors)) {
+            data["errors"] = [];
+            for (let item of this.errors)
+                data["errors"].push(item.toJSON());
+        }
+        return data; 
+    }
+}
+
+export interface IBadResponse {
+    errors?: BadResponseHolder[] | undefined;
+}
+
+export class BadResponseHolder implements IBadResponseHolder {
+    status!: number;
+    error?: string | undefined;
+
+    constructor(data?: IBadResponseHolder) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.status = _data["status"];
+            this.error = _data["error"];
+        }
+    }
+
+    static fromJS(data: any): BadResponseHolder {
+        data = typeof data === 'object' ? data : {};
+        let result = new BadResponseHolder();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["status"] = this.status;
+        data["error"] = this.error;
+        return data; 
+    }
+}
+
+export interface IBadResponseHolder {
+    status: number;
+    error?: string | undefined;
+}
+
+export class ErrorResponse implements IErrorResponse {
+    errors?: ErrorModel[] | undefined;
+
+    constructor(data?: IErrorResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["errors"])) {
+                this.errors = [] as any;
+                for (let item of _data["errors"])
+                    this.errors!.push(ErrorModel.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): ErrorResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ErrorResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.errors)) {
+            data["errors"] = [];
+            for (let item of this.errors)
+                data["errors"].push(item.toJSON());
+        }
+        return data; 
+    }
+}
+
+export interface IErrorResponse {
+    errors?: ErrorModel[] | undefined;
+}
+
+export class ErrorModel implements IErrorModel {
+    fieldName?: string | undefined;
+    message?: string | undefined;
+
+    constructor(data?: IErrorModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.fieldName = _data["fieldName"];
+            this.message = _data["message"];
+        }
+    }
+
+    static fromJS(data: any): ErrorModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new ErrorModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["fieldName"] = this.fieldName;
+        data["message"] = this.message;
+        return data; 
+    }
+}
+
+export interface IErrorModel {
+    fieldName?: string | undefined;
+    message?: string | undefined;
+}
+
+export enum DealTypesApi {
+    Standard_Deal = 1,
+    Live_Deal = 2,
+    VIP_Deal = 3,
+    Empty_Type = 4,
+}
+
+export enum ResultSortOrder {
+    ASC = 0,
+    DESC = 1,
+}
+
+export class PagedResponseOfSearchDealsApiResponse implements IPagedResponseOfSearchDealsApiResponse {
+    data?: SearchDealsApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfSearchDealsApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(SearchDealsApiResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfSearchDealsApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfSearchDealsApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfSearchDealsApiResponse {
+    data?: SearchDealsApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class SearchDealsApiResponse implements ISearchDealsApiResponse {
+    id!: string;
+    sizesAvailable?: SizeGetApiModel[] | undefined;
+    colorsAvailable?: ColorGetApiModel[] | undefined;
+    itemVarianceColorSizes?: ItemVarianceColorSizeGetApiModel[] | undefined;
+    createdAt!: moment.Moment;
+    deletedAt?: moment.Moment | undefined;
+    dealType!: DealType;
+    startDate?: moment.Moment | undefined;
+    endDate?: moment.Moment | undefined;
+    dealItemVariances?: DealItem[] | undefined;
+    item?: Item | undefined;
+    itemVarianceId!: string;
+    dealTitle?: string | undefined;
+    dealDescription?: string | undefined;
+    dealTags?: DealTag[] | undefined;
+    discountType?: DealDiscountType | undefined;
+    discountAmount?: number | undefined;
+    totaPriceWithDiscount?: number | undefined;
+    totaPriceWithoutDiscount?: number | undefined;
+    images?: DealImage[] | undefined;
+    status!: DealStatus;
+    store?: Store | undefined;
+    storeId?: string | undefined;
+    submitDate?: moment.Moment | undefined;
+    isEnabled!: boolean;
+    isFaviroute!: boolean;
+    floorNumber?: string | undefined;
+    sizeChartImage?: string | undefined;
+    promotionMessageTime?: moment.Moment | undefined;
+
+    constructor(data?: ISearchDealsApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            if (Array.isArray(_data["sizesAvailable"])) {
+                this.sizesAvailable = [] as any;
+                for (let item of _data["sizesAvailable"])
+                    this.sizesAvailable!.push(SizeGetApiModel.fromJS(item));
+            }
+            if (Array.isArray(_data["colorsAvailable"])) {
+                this.colorsAvailable = [] as any;
+                for (let item of _data["colorsAvailable"])
+                    this.colorsAvailable!.push(ColorGetApiModel.fromJS(item));
+            }
+            if (Array.isArray(_data["itemVarianceColorSizes"])) {
+                this.itemVarianceColorSizes = [] as any;
+                for (let item of _data["itemVarianceColorSizes"])
+                    this.itemVarianceColorSizes!.push(ItemVarianceColorSizeGetApiModel.fromJS(item));
+            }
+            this.createdAt = _data["createdAt"] ? moment(_data["createdAt"].toString()) : <any>undefined;
+            this.deletedAt = _data["deletedAt"] ? moment(_data["deletedAt"].toString()) : <any>undefined;
+            this.dealType = _data["dealType"];
+            this.startDate = _data["startDate"] ? moment(_data["startDate"].toString()) : <any>undefined;
+            this.endDate = _data["endDate"] ? moment(_data["endDate"].toString()) : <any>undefined;
+            if (Array.isArray(_data["dealItemVariances"])) {
+                this.dealItemVariances = [] as any;
+                for (let item of _data["dealItemVariances"])
+                    this.dealItemVariances!.push(DealItem.fromJS(item));
+            }
+            this.item = _data["item"] ? Item.fromJS(_data["item"]) : <any>undefined;
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.dealTitle = _data["dealTitle"];
+            this.dealDescription = _data["dealDescription"];
+            if (Array.isArray(_data["dealTags"])) {
+                this.dealTags = [] as any;
+                for (let item of _data["dealTags"])
+                    this.dealTags!.push(DealTag.fromJS(item));
+            }
+            this.discountType = _data["discountType"];
+            this.discountAmount = _data["discountAmount"];
+            this.totaPriceWithDiscount = _data["totaPriceWithDiscount"];
+            this.totaPriceWithoutDiscount = _data["totaPriceWithoutDiscount"];
+            if (Array.isArray(_data["images"])) {
+                this.images = [] as any;
+                for (let item of _data["images"])
+                    this.images!.push(DealImage.fromJS(item));
+            }
+            this.status = _data["status"];
+            this.store = _data["store"] ? Store.fromJS(_data["store"]) : <any>undefined;
+            this.storeId = _data["storeId"];
+            this.submitDate = _data["submitDate"] ? moment(_data["submitDate"].toString()) : <any>undefined;
+            this.isEnabled = _data["isEnabled"];
+            this.isFaviroute = _data["isFaviroute"];
+            this.floorNumber = _data["floorNumber"];
+            this.sizeChartImage = _data["sizeChartImage"];
+            this.promotionMessageTime = _data["promotionMessageTime"] ? moment(_data["promotionMessageTime"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): SearchDealsApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SearchDealsApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        if (Array.isArray(this.sizesAvailable)) {
+            data["sizesAvailable"] = [];
+            for (let item of this.sizesAvailable)
+                data["sizesAvailable"].push(item.toJSON());
+        }
+        if (Array.isArray(this.colorsAvailable)) {
+            data["colorsAvailable"] = [];
+            for (let item of this.colorsAvailable)
+                data["colorsAvailable"].push(item.toJSON());
+        }
+        if (Array.isArray(this.itemVarianceColorSizes)) {
+            data["itemVarianceColorSizes"] = [];
+            for (let item of this.itemVarianceColorSizes)
+                data["itemVarianceColorSizes"].push(item.toJSON());
+        }
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        data["deletedAt"] = this.deletedAt ? this.deletedAt.toISOString() : <any>undefined;
+        data["dealType"] = this.dealType;
+        data["startDate"] = this.startDate ? this.startDate.toISOString() : <any>undefined;
+        data["endDate"] = this.endDate ? this.endDate.toISOString() : <any>undefined;
+        if (Array.isArray(this.dealItemVariances)) {
+            data["dealItemVariances"] = [];
+            for (let item of this.dealItemVariances)
+                data["dealItemVariances"].push(item.toJSON());
+        }
+        data["item"] = this.item ? this.item.toJSON() : <any>undefined;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["dealTitle"] = this.dealTitle;
+        data["dealDescription"] = this.dealDescription;
+        if (Array.isArray(this.dealTags)) {
+            data["dealTags"] = [];
+            for (let item of this.dealTags)
+                data["dealTags"].push(item.toJSON());
+        }
+        data["discountType"] = this.discountType;
+        data["discountAmount"] = this.discountAmount;
+        data["totaPriceWithDiscount"] = this.totaPriceWithDiscount;
+        data["totaPriceWithoutDiscount"] = this.totaPriceWithoutDiscount;
+        if (Array.isArray(this.images)) {
+            data["images"] = [];
+            for (let item of this.images)
+                data["images"].push(item.toJSON());
+        }
+        data["status"] = this.status;
+        data["store"] = this.store ? this.store.toJSON() : <any>undefined;
+        data["storeId"] = this.storeId;
+        data["submitDate"] = this.submitDate ? this.submitDate.toISOString() : <any>undefined;
+        data["isEnabled"] = this.isEnabled;
+        data["isFaviroute"] = this.isFaviroute;
+        data["floorNumber"] = this.floorNumber;
+        data["sizeChartImage"] = this.sizeChartImage;
+        data["promotionMessageTime"] = this.promotionMessageTime ? this.promotionMessageTime.toISOString() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface ISearchDealsApiResponse {
+    id: string;
+    sizesAvailable?: SizeGetApiModel[] | undefined;
+    colorsAvailable?: ColorGetApiModel[] | undefined;
+    itemVarianceColorSizes?: ItemVarianceColorSizeGetApiModel[] | undefined;
+    createdAt: moment.Moment;
+    deletedAt?: moment.Moment | undefined;
+    dealType: DealType;
+    startDate?: moment.Moment | undefined;
+    endDate?: moment.Moment | undefined;
+    dealItemVariances?: DealItem[] | undefined;
+    item?: Item | undefined;
+    itemVarianceId: string;
+    dealTitle?: string | undefined;
+    dealDescription?: string | undefined;
+    dealTags?: DealTag[] | undefined;
+    discountType?: DealDiscountType | undefined;
+    discountAmount?: number | undefined;
+    totaPriceWithDiscount?: number | undefined;
+    totaPriceWithoutDiscount?: number | undefined;
+    images?: DealImage[] | undefined;
+    status: DealStatus;
+    store?: Store | undefined;
+    storeId?: string | undefined;
+    submitDate?: moment.Moment | undefined;
+    isEnabled: boolean;
+    isFaviroute: boolean;
+    floorNumber?: string | undefined;
+    sizeChartImage?: string | undefined;
+    promotionMessageTime?: moment.Moment | undefined;
+}
+
+export enum DealSearchType {
+    Deal_Search = 1,
+    Tag_Search = 4,
+}
+
+export class PagedResponseOfImageCreateAPIResponse implements IPagedResponseOfImageCreateAPIResponse {
+    data?: ImageCreateAPIResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfImageCreateAPIResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(ImageCreateAPIResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfImageCreateAPIResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfImageCreateAPIResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfImageCreateAPIResponse {
+    data?: ImageCreateAPIResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class ImageCreateAPIResponse implements IImageCreateAPIResponse {
+    imageUrl?: string | undefined;
+    imageId?: string | undefined;
+
+    constructor(data?: IImageCreateAPIResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.imageUrl = _data["imageUrl"];
+            this.imageId = _data["imageId"];
+        }
+    }
+
+    static fromJS(data: any): ImageCreateAPIResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ImageCreateAPIResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["imageUrl"] = this.imageUrl;
+        data["imageId"] = this.imageId;
+        return data; 
+    }
+}
+
+export interface IImageCreateAPIResponse {
+    imageUrl?: string | undefined;
+    imageId?: string | undefined;
+}
+
+export abstract class IHeaderDictionary implements IIHeaderDictionary {
+    item!: string[];
+    contentLength?: number | undefined;
+
+    constructor(data?: IIHeaderDictionary) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+        if (!data) {
+            this.item = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["Item"])) {
+                this.item = [] as any;
+                for (let item of _data["Item"])
+                    this.item!.push(item);
+            }
+            this.contentLength = _data["ContentLength"];
+        }
+    }
+
+    static fromJS(data: any): IHeaderDictionary {
+        data = typeof data === 'object' ? data : {};
+        throw new Error("The abstract class 'IHeaderDictionary' cannot be instantiated.");
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.item)) {
+            data["Item"] = [];
+            for (let item of this.item)
+                data["Item"].push(item);
+        }
+        data["ContentLength"] = this.contentLength;
+        return data; 
+    }
+}
+
+export interface IIHeaderDictionary {
+    item: string[];
+    contentLength?: number | undefined;
+}
+
+export class PagedResponseOfItemGetApiResponse implements IPagedResponseOfItemGetApiResponse {
+    data?: ItemGetApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfItemGetApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(ItemGetApiResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfItemGetApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfItemGetApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfItemGetApiResponse {
+    data?: ItemGetApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class ItemGetApiResponse implements IItemGetApiResponse {
+    sizesAvailable?: SizeGetApiModel[] | undefined;
+    colorsAvailable?: ColorGetApiModel[] | undefined;
+    itemVarianceColorSizes?: ItemVarianceColorSizeGetApiModel[] | undefined;
+    id?: string | undefined;
+    itemTitle?: string | undefined;
+    itemDescription?: string | undefined;
+    tagList?: string[] | undefined;
+    storeId?: string | undefined;
+    itemValue!: number;
+    isApproved?: boolean | undefined;
+    mainImage?: string | undefined;
+    isEnabled!: boolean;
+    isItemVariant!: boolean;
+    sizeChartImage?: string | undefined;
+
+    constructor(data?: IItemGetApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["sizesAvailable"])) {
+                this.sizesAvailable = [] as any;
+                for (let item of _data["sizesAvailable"])
+                    this.sizesAvailable!.push(SizeGetApiModel.fromJS(item));
+            }
+            if (Array.isArray(_data["colorsAvailable"])) {
+                this.colorsAvailable = [] as any;
+                for (let item of _data["colorsAvailable"])
+                    this.colorsAvailable!.push(ColorGetApiModel.fromJS(item));
+            }
+            if (Array.isArray(_data["itemVarianceColorSizes"])) {
+                this.itemVarianceColorSizes = [] as any;
+                for (let item of _data["itemVarianceColorSizes"])
+                    this.itemVarianceColorSizes!.push(ItemVarianceColorSizeGetApiModel.fromJS(item));
+            }
+            this.id = _data["id"];
+            this.itemTitle = _data["itemTitle"];
+            this.itemDescription = _data["itemDescription"];
+            if (Array.isArray(_data["tagList"])) {
+                this.tagList = [] as any;
+                for (let item of _data["tagList"])
+                    this.tagList!.push(item);
+            }
+            this.storeId = _data["storeId"];
+            this.itemValue = _data["itemValue"];
+            this.isApproved = _data["isApproved"];
+            this.mainImage = _data["mainImage"];
+            this.isEnabled = _data["isEnabled"];
+            this.isItemVariant = _data["isItemVariant"];
+            this.sizeChartImage = _data["sizeChartImage"];
+        }
+    }
+
+    static fromJS(data: any): ItemGetApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ItemGetApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.sizesAvailable)) {
+            data["sizesAvailable"] = [];
+            for (let item of this.sizesAvailable)
+                data["sizesAvailable"].push(item.toJSON());
+        }
+        if (Array.isArray(this.colorsAvailable)) {
+            data["colorsAvailable"] = [];
+            for (let item of this.colorsAvailable)
+                data["colorsAvailable"].push(item.toJSON());
+        }
+        if (Array.isArray(this.itemVarianceColorSizes)) {
+            data["itemVarianceColorSizes"] = [];
+            for (let item of this.itemVarianceColorSizes)
+                data["itemVarianceColorSizes"].push(item.toJSON());
+        }
+        data["id"] = this.id;
+        data["itemTitle"] = this.itemTitle;
+        data["itemDescription"] = this.itemDescription;
+        if (Array.isArray(this.tagList)) {
+            data["tagList"] = [];
+            for (let item of this.tagList)
+                data["tagList"].push(item);
+        }
+        data["storeId"] = this.storeId;
+        data["itemValue"] = this.itemValue;
+        data["isApproved"] = this.isApproved;
+        data["mainImage"] = this.mainImage;
+        data["isEnabled"] = this.isEnabled;
+        data["isItemVariant"] = this.isItemVariant;
+        data["sizeChartImage"] = this.sizeChartImage;
+        return data; 
+    }
+}
+
+export interface IItemGetApiResponse {
+    sizesAvailable?: SizeGetApiModel[] | undefined;
+    colorsAvailable?: ColorGetApiModel[] | undefined;
+    itemVarianceColorSizes?: ItemVarianceColorSizeGetApiModel[] | undefined;
+    id?: string | undefined;
+    itemTitle?: string | undefined;
+    itemDescription?: string | undefined;
+    tagList?: string[] | undefined;
+    storeId?: string | undefined;
+    itemValue: number;
+    isApproved?: boolean | undefined;
+    mainImage?: string | undefined;
+    isEnabled: boolean;
+    isItemVariant: boolean;
+    sizeChartImage?: string | undefined;
+}
+
+export class PagedResponseOfGetAllMessageApiResponse implements IPagedResponseOfGetAllMessageApiResponse {
+    data?: GetAllMessageApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfGetAllMessageApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(GetAllMessageApiResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfGetAllMessageApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfGetAllMessageApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfGetAllMessageApiResponse {
+    data?: GetAllMessageApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class GetAllMessageApiResponse implements IGetAllMessageApiResponse {
+    id?: string | undefined;
+    message?: string | undefined;
+    title?: string | undefined;
+    qrImge?: string | undefined;
+    storeImage?: string | undefined;
+    orderId?: string | undefined;
+
+    constructor(data?: IGetAllMessageApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.message = _data["message"];
+            this.title = _data["title"];
+            this.qrImge = _data["qrImge"];
+            this.storeImage = _data["storeImage"];
+            this.orderId = _data["orderId"];
+        }
+    }
+
+    static fromJS(data: any): GetAllMessageApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetAllMessageApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["message"] = this.message;
+        data["title"] = this.title;
+        data["qrImge"] = this.qrImge;
+        data["storeImage"] = this.storeImage;
+        data["orderId"] = this.orderId;
+        return data; 
+    }
+}
+
+export interface IGetAllMessageApiResponse {
+    id?: string | undefined;
+    message?: string | undefined;
+    title?: string | undefined;
+    qrImge?: string | undefined;
+    storeImage?: string | undefined;
+    orderId?: string | undefined;
+}
+
+export class ResponseOfDeleteMessageApiResponse implements IResponseOfDeleteMessageApiResponse {
+    data?: DeleteMessageApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfDeleteMessageApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? DeleteMessageApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfDeleteMessageApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfDeleteMessageApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfDeleteMessageApiResponse {
+    data?: DeleteMessageApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class DeleteMessageApiResponse implements IDeleteMessageApiResponse {
+    isSuccess!: boolean;
+
+    constructor(data?: IDeleteMessageApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+        }
+    }
+
+    static fromJS(data: any): DeleteMessageApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new DeleteMessageApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        return data; 
+    }
+}
+
+export interface IDeleteMessageApiResponse {
+    isSuccess: boolean;
+}
+
+export class DeleteMessageApiRequest implements IDeleteMessageApiRequest {
+    messageId?: string | undefined;
+
+    constructor(data?: IDeleteMessageApiRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.messageId = _data["messageId"];
+        }
+    }
+
+    static fromJS(data: any): DeleteMessageApiRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new DeleteMessageApiRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["messageId"] = this.messageId;
+        return data; 
+    }
+}
+
+export interface IDeleteMessageApiRequest {
+    messageId?: string | undefined;
+}
+
+export class ResponseOfCreateOrderByShoppingCartApiResponse implements IResponseOfCreateOrderByShoppingCartApiResponse {
+    data?: CreateOrderByShoppingCartApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfCreateOrderByShoppingCartApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? CreateOrderByShoppingCartApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfCreateOrderByShoppingCartApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfCreateOrderByShoppingCartApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfCreateOrderByShoppingCartApiResponse {
+    data?: CreateOrderByShoppingCartApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class CreateOrderByShoppingCartApiResponse implements ICreateOrderByShoppingCartApiResponse {
+    id!: string;
+    orderItem?: OrderItemsByShoppingCartApiResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderStatusType!: OrderStatusType;
+    orderDate!: moment.Moment;
+    qrImage?: string | undefined;
+    orderDisplayNo?: string | undefined;
+
+    constructor(data?: ICreateOrderByShoppingCartApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            if (Array.isArray(_data["orderItem"])) {
+                this.orderItem = [] as any;
+                for (let item of _data["orderItem"])
+                    this.orderItem!.push(OrderItemsByShoppingCartApiResponse.fromJS(item));
+            }
+            this.totalPrice = _data["totalPrice"];
+            this.subTotal = _data["subTotal"];
+            this.totalTax = _data["totalTax"];
+            this.orderStatusType = _data["orderStatusType"];
+            this.orderDate = _data["orderDate"] ? moment(_data["orderDate"].toString()) : <any>undefined;
+            this.qrImage = _data["qrImage"];
+            this.orderDisplayNo = _data["orderDisplayNo"];
+        }
+    }
+
+    static fromJS(data: any): CreateOrderByShoppingCartApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateOrderByShoppingCartApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        if (Array.isArray(this.orderItem)) {
+            data["orderItem"] = [];
+            for (let item of this.orderItem)
+                data["orderItem"].push(item.toJSON());
+        }
+        data["totalPrice"] = this.totalPrice;
+        data["subTotal"] = this.subTotal;
+        data["totalTax"] = this.totalTax;
+        data["orderStatusType"] = this.orderStatusType;
+        data["orderDate"] = this.orderDate ? this.orderDate.toISOString() : <any>undefined;
+        data["qrImage"] = this.qrImage;
+        data["orderDisplayNo"] = this.orderDisplayNo;
+        return data; 
+    }
+}
+
+export interface ICreateOrderByShoppingCartApiResponse {
+    id: string;
+    orderItem?: OrderItemsByShoppingCartApiResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderStatusType: OrderStatusType;
+    orderDate: moment.Moment;
+    qrImage?: string | undefined;
+    orderDisplayNo?: string | undefined;
+}
+
+export class OrderItemsByShoppingCartApiResponse implements IOrderItemsByShoppingCartApiResponse {
+    id!: string;
+    orderId!: string;
+    orderDisplayNo?: string | undefined;
+    itemVarianceId!: string;
+    typeColorId!: number;
+    colorId!: number;
+    sizeId!: number;
+    sizeName?: string | undefined;
+    colorName?: string | undefined;
+    sizeFormatId!: number;
+    itemVarienceImage?: string | undefined;
+    itemVarienceTitle?: string | undefined;
+    dealId?: string | undefined;
+    dealImage?: string | undefined;
+    dealTitle?: string | undefined;
+    dealBundleId?: string | undefined;
+    dealBundleTitle?: string | undefined;
+    dealBundleImage?: string | undefined;
+    storeId?: string | undefined;
+    storeName?: string | undefined;
+    storeImage?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    orderItemStatusType!: OrderItemStatusType;
+    orderItemType!: OrderItemType;
+
+    constructor(data?: IOrderItemsByShoppingCartApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.orderId = _data["orderId"];
+            this.orderDisplayNo = _data["orderDisplayNo"];
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.typeColorId = _data["typeColorId"];
+            this.colorId = _data["colorId"];
+            this.sizeId = _data["sizeId"];
+            this.sizeName = _data["sizeName"];
+            this.colorName = _data["colorName"];
+            this.sizeFormatId = _data["sizeFormatId"];
+            this.itemVarienceImage = _data["itemVarienceImage"];
+            this.itemVarienceTitle = _data["itemVarienceTitle"];
+            this.dealId = _data["dealId"];
+            this.dealImage = _data["dealImage"];
+            this.dealTitle = _data["dealTitle"];
+            this.dealBundleId = _data["dealBundleId"];
+            this.dealBundleTitle = _data["dealBundleTitle"];
+            this.dealBundleImage = _data["dealBundleImage"];
+            this.storeId = _data["storeId"];
+            this.storeName = _data["storeName"];
+            this.storeImage = _data["storeImage"];
+            this.price = _data["price"];
+            this.quantity = _data["quantity"];
+            this.taxAmount = _data["taxAmount"];
+            this.orderItemStatusType = _data["orderItemStatusType"];
+            this.orderItemType = _data["orderItemType"];
+        }
+    }
+
+    static fromJS(data: any): OrderItemsByShoppingCartApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new OrderItemsByShoppingCartApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["orderId"] = this.orderId;
+        data["orderDisplayNo"] = this.orderDisplayNo;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["typeColorId"] = this.typeColorId;
+        data["colorId"] = this.colorId;
+        data["sizeId"] = this.sizeId;
+        data["sizeName"] = this.sizeName;
+        data["colorName"] = this.colorName;
+        data["sizeFormatId"] = this.sizeFormatId;
+        data["itemVarienceImage"] = this.itemVarienceImage;
+        data["itemVarienceTitle"] = this.itemVarienceTitle;
+        data["dealId"] = this.dealId;
+        data["dealImage"] = this.dealImage;
+        data["dealTitle"] = this.dealTitle;
+        data["dealBundleId"] = this.dealBundleId;
+        data["dealBundleTitle"] = this.dealBundleTitle;
+        data["dealBundleImage"] = this.dealBundleImage;
+        data["storeId"] = this.storeId;
+        data["storeName"] = this.storeName;
+        data["storeImage"] = this.storeImage;
+        data["price"] = this.price;
+        data["quantity"] = this.quantity;
+        data["taxAmount"] = this.taxAmount;
+        data["orderItemStatusType"] = this.orderItemStatusType;
+        data["orderItemType"] = this.orderItemType;
+        return data; 
+    }
+}
+
+export interface IOrderItemsByShoppingCartApiResponse {
+    id: string;
+    orderId: string;
+    orderDisplayNo?: string | undefined;
+    itemVarianceId: string;
+    typeColorId: number;
+    colorId: number;
+    sizeId: number;
+    sizeName?: string | undefined;
+    colorName?: string | undefined;
+    sizeFormatId: number;
+    itemVarienceImage?: string | undefined;
+    itemVarienceTitle?: string | undefined;
+    dealId?: string | undefined;
+    dealImage?: string | undefined;
+    dealTitle?: string | undefined;
+    dealBundleId?: string | undefined;
+    dealBundleTitle?: string | undefined;
+    dealBundleImage?: string | undefined;
+    storeId?: string | undefined;
+    storeName?: string | undefined;
+    storeImage?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    orderItemStatusType: OrderItemStatusType;
+    orderItemType: OrderItemType;
+}
+
+export enum OrderItemStatusType {
+    Pending = 1,
+    Confirmed = 2,
+    RefundStarted = 3,
+    OutofStock = 4,
+    Cancelled = 5,
+}
+
+export enum OrderItemType {
+    NormalItem = 1,
+    DealItem = 2,
+    BundleItem = 3,
+    NoItem = 4,
+}
+
+export enum OrderStatusType {
+    Pending = 0,
+    Processing = 1,
+    Completed = 2,
+    PartialyRefund = 3,
+    FullyRefund = 4,
+    Cancelled = 5,
+}
+
+export class CreateOrderByShoppingCartApiRequest implements ICreateOrderByShoppingCartApiRequest {
+    cartId?: string | undefined;
+    paymentDetailsList?: PaymentDetailsRequest[] | undefined;
+
+    constructor(data?: ICreateOrderByShoppingCartApiRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.cartId = _data["cartId"];
+            if (Array.isArray(_data["paymentDetailsList"])) {
+                this.paymentDetailsList = [] as any;
+                for (let item of _data["paymentDetailsList"])
+                    this.paymentDetailsList!.push(PaymentDetailsRequest.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CreateOrderByShoppingCartApiRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateOrderByShoppingCartApiRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["cartId"] = this.cartId;
+        if (Array.isArray(this.paymentDetailsList)) {
+            data["paymentDetailsList"] = [];
+            for (let item of this.paymentDetailsList)
+                data["paymentDetailsList"].push(item.toJSON());
+        }
+        return data; 
+    }
+}
+
+export interface ICreateOrderByShoppingCartApiRequest {
+    cartId?: string | undefined;
+    paymentDetailsList?: PaymentDetailsRequest[] | undefined;
+}
+
+export class PaymentDetailsRequest implements IPaymentDetailsRequest {
+    paymentType!: PaymentType;
+    totalAmount!: number;
+    cardId?: string | undefined;
+
+    constructor(data?: IPaymentDetailsRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.paymentType = _data["paymentType"];
+            this.totalAmount = _data["totalAmount"];
+            this.cardId = _data["cardId"];
+        }
+    }
+
+    static fromJS(data: any): PaymentDetailsRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new PaymentDetailsRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["paymentType"] = this.paymentType;
+        data["totalAmount"] = this.totalAmount;
+        data["cardId"] = this.cardId;
+        return data; 
+    }
+}
+
+export interface IPaymentDetailsRequest {
+    paymentType: PaymentType;
+    totalAmount: number;
+    cardId?: string | undefined;
+}
+
+export enum PaymentType {
+    YulaDollers = 1,
+    Creditcard = 2,
+}
+
+export class ResponseOfCreateOrderApiResponse implements IResponseOfCreateOrderApiResponse {
+    data?: CreateOrderApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfCreateOrderApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? CreateOrderApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfCreateOrderApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfCreateOrderApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfCreateOrderApiResponse {
+    data?: CreateOrderApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class CreateOrderApiResponse implements ICreateOrderApiResponse {
+    id!: string;
+    orderDisplayNo?: string | undefined;
+    orderItem?: OrderItemsByShoppingCartApiResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderStatusType!: OrderStatusType;
+    orderDate!: moment.Moment;
+    qrImage?: string | undefined;
+
+    constructor(data?: ICreateOrderApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.orderDisplayNo = _data["orderDisplayNo"];
+            if (Array.isArray(_data["orderItem"])) {
+                this.orderItem = [] as any;
+                for (let item of _data["orderItem"])
+                    this.orderItem!.push(OrderItemsByShoppingCartApiResponse.fromJS(item));
+            }
+            this.totalPrice = _data["totalPrice"];
+            this.subTotal = _data["subTotal"];
+            this.totalTax = _data["totalTax"];
+            this.orderStatusType = _data["orderStatusType"];
+            this.orderDate = _data["orderDate"] ? moment(_data["orderDate"].toString()) : <any>undefined;
+            this.qrImage = _data["qrImage"];
+        }
+    }
+
+    static fromJS(data: any): CreateOrderApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateOrderApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["orderDisplayNo"] = this.orderDisplayNo;
+        if (Array.isArray(this.orderItem)) {
+            data["orderItem"] = [];
+            for (let item of this.orderItem)
+                data["orderItem"].push(item.toJSON());
+        }
+        data["totalPrice"] = this.totalPrice;
+        data["subTotal"] = this.subTotal;
+        data["totalTax"] = this.totalTax;
+        data["orderStatusType"] = this.orderStatusType;
+        data["orderDate"] = this.orderDate ? this.orderDate.toISOString() : <any>undefined;
+        data["qrImage"] = this.qrImage;
+        return data; 
+    }
+}
+
+export interface ICreateOrderApiResponse {
+    id: string;
+    orderDisplayNo?: string | undefined;
+    orderItem?: OrderItemsByShoppingCartApiResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderStatusType: OrderStatusType;
+    orderDate: moment.Moment;
+    qrImage?: string | undefined;
+}
+
+export class CreateOrderApiRequest implements ICreateOrderApiRequest {
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderItems?: CreateOrderItemApiRequest[] | undefined;
+    paymentDetailsList?: PaymentDetailsRequest[] | undefined;
+
+    constructor(data?: ICreateOrderApiRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.totalPrice = _data["totalPrice"];
+            this.subTotal = _data["subTotal"];
+            this.totalTax = _data["totalTax"];
+            if (Array.isArray(_data["orderItems"])) {
+                this.orderItems = [] as any;
+                for (let item of _data["orderItems"])
+                    this.orderItems!.push(CreateOrderItemApiRequest.fromJS(item));
+            }
+            if (Array.isArray(_data["paymentDetailsList"])) {
+                this.paymentDetailsList = [] as any;
+                for (let item of _data["paymentDetailsList"])
+                    this.paymentDetailsList!.push(PaymentDetailsRequest.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CreateOrderApiRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateOrderApiRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["totalPrice"] = this.totalPrice;
+        data["subTotal"] = this.subTotal;
+        data["totalTax"] = this.totalTax;
+        if (Array.isArray(this.orderItems)) {
+            data["orderItems"] = [];
+            for (let item of this.orderItems)
+                data["orderItems"].push(item.toJSON());
+        }
+        if (Array.isArray(this.paymentDetailsList)) {
+            data["paymentDetailsList"] = [];
+            for (let item of this.paymentDetailsList)
+                data["paymentDetailsList"].push(item.toJSON());
+        }
+        return data; 
+    }
+}
+
+export interface ICreateOrderApiRequest {
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderItems?: CreateOrderItemApiRequest[] | undefined;
+    paymentDetailsList?: PaymentDetailsRequest[] | undefined;
+}
+
+export class CreateOrderItemApiRequest implements ICreateOrderItemApiRequest {
+    price?: number | undefined;
+    quantity?: number | undefined;
+    orderItemType!: OrderItemType;
+    itemVarianceId?: string | undefined;
+    dealId?: string | undefined;
+    dealBundleId?: string | undefined;
+    storeId?: string | undefined;
+
+    constructor(data?: ICreateOrderItemApiRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.price = _data["price"];
+            this.quantity = _data["quantity"];
+            this.orderItemType = _data["orderItemType"];
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.dealId = _data["dealId"];
+            this.dealBundleId = _data["dealBundleId"];
+            this.storeId = _data["storeId"];
+        }
+    }
+
+    static fromJS(data: any): CreateOrderItemApiRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateOrderItemApiRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["price"] = this.price;
+        data["quantity"] = this.quantity;
+        data["orderItemType"] = this.orderItemType;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["dealId"] = this.dealId;
+        data["dealBundleId"] = this.dealBundleId;
+        data["storeId"] = this.storeId;
+        return data; 
+    }
+}
+
+export interface ICreateOrderItemApiRequest {
+    price?: number | undefined;
+    quantity?: number | undefined;
+    orderItemType: OrderItemType;
+    itemVarianceId?: string | undefined;
+    dealId?: string | undefined;
+    dealBundleId?: string | undefined;
+    storeId?: string | undefined;
+}
+
+export class PagedResponseOfGetAllOrderByUserIDApiResponse implements IPagedResponseOfGetAllOrderByUserIDApiResponse {
+    data?: GetAllOrderByUserIDApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfGetAllOrderByUserIDApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(GetAllOrderByUserIDApiResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfGetAllOrderByUserIDApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfGetAllOrderByUserIDApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfGetAllOrderByUserIDApiResponse {
+    data?: GetAllOrderByUserIDApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class GetAllOrderByUserIDApiResponse implements IGetAllOrderByUserIDApiResponse {
+    orderLst?: OrderByUserIDApiResponse[] | undefined;
+
+    constructor(data?: IGetAllOrderByUserIDApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["orderLst"])) {
+                this.orderLst = [] as any;
+                for (let item of _data["orderLst"])
+                    this.orderLst!.push(OrderByUserIDApiResponse.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): GetAllOrderByUserIDApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetAllOrderByUserIDApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.orderLst)) {
+            data["orderLst"] = [];
+            for (let item of this.orderLst)
+                data["orderLst"].push(item.toJSON());
+        }
+        return data; 
+    }
+}
+
+export interface IGetAllOrderByUserIDApiResponse {
+    orderLst?: OrderByUserIDApiResponse[] | undefined;
+}
+
+export class OrderByUserIDApiResponse implements IOrderByUserIDApiResponse {
+    id!: string;
+    orderItem?: OrderItemsByuseIdApiResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderStatusType!: OrderStatusType;
+    orderDate!: moment.Moment;
+    qrImage?: string | undefined;
+    orderDisplayNo?: string | undefined;
+
+    constructor(data?: IOrderByUserIDApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            if (Array.isArray(_data["orderItem"])) {
+                this.orderItem = [] as any;
+                for (let item of _data["orderItem"])
+                    this.orderItem!.push(OrderItemsByuseIdApiResponse.fromJS(item));
+            }
+            this.totalPrice = _data["totalPrice"];
+            this.subTotal = _data["subTotal"];
+            this.totalTax = _data["totalTax"];
+            this.orderStatusType = _data["orderStatusType"];
+            this.orderDate = _data["orderDate"] ? moment(_data["orderDate"].toString()) : <any>undefined;
+            this.qrImage = _data["qrImage"];
+            this.orderDisplayNo = _data["orderDisplayNo"];
+        }
+    }
+
+    static fromJS(data: any): OrderByUserIDApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new OrderByUserIDApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        if (Array.isArray(this.orderItem)) {
+            data["orderItem"] = [];
+            for (let item of this.orderItem)
+                data["orderItem"].push(item.toJSON());
+        }
+        data["totalPrice"] = this.totalPrice;
+        data["subTotal"] = this.subTotal;
+        data["totalTax"] = this.totalTax;
+        data["orderStatusType"] = this.orderStatusType;
+        data["orderDate"] = this.orderDate ? this.orderDate.toISOString() : <any>undefined;
+        data["qrImage"] = this.qrImage;
+        data["orderDisplayNo"] = this.orderDisplayNo;
+        return data; 
+    }
+}
+
+export interface IOrderByUserIDApiResponse {
+    id: string;
+    orderItem?: OrderItemsByuseIdApiResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderStatusType: OrderStatusType;
+    orderDate: moment.Moment;
+    qrImage?: string | undefined;
+    orderDisplayNo?: string | undefined;
+}
+
+export class OrderItemsByuseIdApiResponse implements IOrderItemsByuseIdApiResponse {
+    id!: string;
+    orderId!: string;
+    orderDisplayNo?: string | undefined;
+    itemVarianceId!: string;
+    typeColorId!: number;
+    colorId!: number;
+    sizeId!: number;
+    sizeName?: string | undefined;
+    colorName?: string | undefined;
+    sizeFormatId!: number;
+    itemVarienceImage?: string | undefined;
+    itemVarienceTitle?: string | undefined;
+    dealId?: string | undefined;
+    dealImage?: string | undefined;
+    dealTitle?: string | undefined;
+    dealBundleId?: string | undefined;
+    dealBundleTitle?: string | undefined;
+    dealBundleImage?: string | undefined;
+    storeId?: string | undefined;
+    storeName?: string | undefined;
+    storeImage?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    orderItemStatusType!: OrderItemStatusType;
+    orderItemType!: OrderItemType;
+
+    constructor(data?: IOrderItemsByuseIdApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.orderId = _data["orderId"];
+            this.orderDisplayNo = _data["orderDisplayNo"];
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.typeColorId = _data["typeColorId"];
+            this.colorId = _data["colorId"];
+            this.sizeId = _data["sizeId"];
+            this.sizeName = _data["sizeName"];
+            this.colorName = _data["colorName"];
+            this.sizeFormatId = _data["sizeFormatId"];
+            this.itemVarienceImage = _data["itemVarienceImage"];
+            this.itemVarienceTitle = _data["itemVarienceTitle"];
+            this.dealId = _data["dealId"];
+            this.dealImage = _data["dealImage"];
+            this.dealTitle = _data["dealTitle"];
+            this.dealBundleId = _data["dealBundleId"];
+            this.dealBundleTitle = _data["dealBundleTitle"];
+            this.dealBundleImage = _data["dealBundleImage"];
+            this.storeId = _data["storeId"];
+            this.storeName = _data["storeName"];
+            this.storeImage = _data["storeImage"];
+            this.price = _data["price"];
+            this.quantity = _data["quantity"];
+            this.taxAmount = _data["taxAmount"];
+            this.orderItemStatusType = _data["orderItemStatusType"];
+            this.orderItemType = _data["orderItemType"];
+        }
+    }
+
+    static fromJS(data: any): OrderItemsByuseIdApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new OrderItemsByuseIdApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["orderId"] = this.orderId;
+        data["orderDisplayNo"] = this.orderDisplayNo;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["typeColorId"] = this.typeColorId;
+        data["colorId"] = this.colorId;
+        data["sizeId"] = this.sizeId;
+        data["sizeName"] = this.sizeName;
+        data["colorName"] = this.colorName;
+        data["sizeFormatId"] = this.sizeFormatId;
+        data["itemVarienceImage"] = this.itemVarienceImage;
+        data["itemVarienceTitle"] = this.itemVarienceTitle;
+        data["dealId"] = this.dealId;
+        data["dealImage"] = this.dealImage;
+        data["dealTitle"] = this.dealTitle;
+        data["dealBundleId"] = this.dealBundleId;
+        data["dealBundleTitle"] = this.dealBundleTitle;
+        data["dealBundleImage"] = this.dealBundleImage;
+        data["storeId"] = this.storeId;
+        data["storeName"] = this.storeName;
+        data["storeImage"] = this.storeImage;
+        data["price"] = this.price;
+        data["quantity"] = this.quantity;
+        data["taxAmount"] = this.taxAmount;
+        data["orderItemStatusType"] = this.orderItemStatusType;
+        data["orderItemType"] = this.orderItemType;
+        return data; 
+    }
+}
+
+export interface IOrderItemsByuseIdApiResponse {
+    id: string;
+    orderId: string;
+    orderDisplayNo?: string | undefined;
+    itemVarianceId: string;
+    typeColorId: number;
+    colorId: number;
+    sizeId: number;
+    sizeName?: string | undefined;
+    colorName?: string | undefined;
+    sizeFormatId: number;
+    itemVarienceImage?: string | undefined;
+    itemVarienceTitle?: string | undefined;
+    dealId?: string | undefined;
+    dealImage?: string | undefined;
+    dealTitle?: string | undefined;
+    dealBundleId?: string | undefined;
+    dealBundleTitle?: string | undefined;
+    dealBundleImage?: string | undefined;
+    storeId?: string | undefined;
+    storeName?: string | undefined;
+    storeImage?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    orderItemStatusType: OrderItemStatusType;
+    orderItemType: OrderItemType;
+}
+
+export class ResponseOfGetOrderByOrderIDApiResponse implements IResponseOfGetOrderByOrderIDApiResponse {
+    data?: GetOrderByOrderIDApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfGetOrderByOrderIDApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? GetOrderByOrderIDApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfGetOrderByOrderIDApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfGetOrderByOrderIDApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfGetOrderByOrderIDApiResponse {
+    data?: GetOrderByOrderIDApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class GetOrderByOrderIDApiResponse implements IGetOrderByOrderIDApiResponse {
+    id!: string;
+    orderDisplayNo?: string | undefined;
+    orderItem?: OrderItemsByuseIdApiResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderStatusType!: OrderStatusType;
+    orderDate!: moment.Moment;
+    qrImage?: string | undefined;
+
+    constructor(data?: IGetOrderByOrderIDApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.orderDisplayNo = _data["orderDisplayNo"];
+            if (Array.isArray(_data["orderItem"])) {
+                this.orderItem = [] as any;
+                for (let item of _data["orderItem"])
+                    this.orderItem!.push(OrderItemsByuseIdApiResponse.fromJS(item));
+            }
+            this.totalPrice = _data["totalPrice"];
+            this.subTotal = _data["subTotal"];
+            this.totalTax = _data["totalTax"];
+            this.orderStatusType = _data["orderStatusType"];
+            this.orderDate = _data["orderDate"] ? moment(_data["orderDate"].toString()) : <any>undefined;
+            this.qrImage = _data["qrImage"];
+        }
+    }
+
+    static fromJS(data: any): GetOrderByOrderIDApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetOrderByOrderIDApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["orderDisplayNo"] = this.orderDisplayNo;
+        if (Array.isArray(this.orderItem)) {
+            data["orderItem"] = [];
+            for (let item of this.orderItem)
+                data["orderItem"].push(item.toJSON());
+        }
+        data["totalPrice"] = this.totalPrice;
+        data["subTotal"] = this.subTotal;
+        data["totalTax"] = this.totalTax;
+        data["orderStatusType"] = this.orderStatusType;
+        data["orderDate"] = this.orderDate ? this.orderDate.toISOString() : <any>undefined;
+        data["qrImage"] = this.qrImage;
+        return data; 
+    }
+}
+
+export interface IGetOrderByOrderIDApiResponse {
+    id: string;
+    orderDisplayNo?: string | undefined;
+    orderItem?: OrderItemsByuseIdApiResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+    orderStatusType: OrderStatusType;
+    orderDate: moment.Moment;
+    qrImage?: string | undefined;
+}
+
+export class ResponseOfUpdateStatusApiResponse implements IResponseOfUpdateStatusApiResponse {
+    data?: UpdateStatusApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfUpdateStatusApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? UpdateStatusApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfUpdateStatusApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfUpdateStatusApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfUpdateStatusApiResponse {
+    data?: UpdateStatusApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class UpdateStatusApiResponse implements IUpdateStatusApiResponse {
+    orderItems?: OrderItemsByStoreIdApiResponse[] | undefined;
+    totalPrice!: number;
+    subTotalPrice!: number;
+    totalTaxPrice!: number;
+    totalRefund!: number;
+    qrImage?: string | undefined;
+    orderPersonImage?: string | undefined;
+    orderPersonName?: string | undefined;
+    orderPersonContact?: string | undefined;
+    orderStatus!: OrderStatusType;
+    orderDate!: moment.Moment;
+    orderDisplayNo?: string | undefined;
+
+    constructor(data?: IUpdateStatusApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["orderItems"])) {
+                this.orderItems = [] as any;
+                for (let item of _data["orderItems"])
+                    this.orderItems!.push(OrderItemsByStoreIdApiResponse.fromJS(item));
+            }
+            this.totalPrice = _data["totalPrice"];
+            this.subTotalPrice = _data["subTotalPrice"];
+            this.totalTaxPrice = _data["totalTaxPrice"];
+            this.totalRefund = _data["totalRefund"];
+            this.qrImage = _data["qrImage"];
+            this.orderPersonImage = _data["orderPersonImage"];
+            this.orderPersonName = _data["orderPersonName"];
+            this.orderPersonContact = _data["orderPersonContact"];
+            this.orderStatus = _data["orderStatus"];
+            this.orderDate = _data["orderDate"] ? moment(_data["orderDate"].toString()) : <any>undefined;
+            this.orderDisplayNo = _data["orderDisplayNo"];
+        }
+    }
+
+    static fromJS(data: any): UpdateStatusApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateStatusApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.orderItems)) {
+            data["orderItems"] = [];
+            for (let item of this.orderItems)
+                data["orderItems"].push(item.toJSON());
+        }
+        data["totalPrice"] = this.totalPrice;
+        data["subTotalPrice"] = this.subTotalPrice;
+        data["totalTaxPrice"] = this.totalTaxPrice;
+        data["totalRefund"] = this.totalRefund;
+        data["qrImage"] = this.qrImage;
+        data["orderPersonImage"] = this.orderPersonImage;
+        data["orderPersonName"] = this.orderPersonName;
+        data["orderPersonContact"] = this.orderPersonContact;
+        data["orderStatus"] = this.orderStatus;
+        data["orderDate"] = this.orderDate ? this.orderDate.toISOString() : <any>undefined;
+        data["orderDisplayNo"] = this.orderDisplayNo;
+        return data; 
+    }
+}
+
+export interface IUpdateStatusApiResponse {
+    orderItems?: OrderItemsByStoreIdApiResponse[] | undefined;
+    totalPrice: number;
+    subTotalPrice: number;
+    totalTaxPrice: number;
+    totalRefund: number;
+    qrImage?: string | undefined;
+    orderPersonImage?: string | undefined;
+    orderPersonName?: string | undefined;
+    orderPersonContact?: string | undefined;
+    orderStatus: OrderStatusType;
+    orderDate: moment.Moment;
+    orderDisplayNo?: string | undefined;
+}
+
+export class OrderItemsByStoreIdApiResponse implements IOrderItemsByStoreIdApiResponse {
+    id!: string;
+    orderId!: string;
+    qrImage?: string | undefined;
+    itemVarianceId!: string;
+    typeColorId!: number;
+    colorId!: number;
+    sizeId!: number;
+    sizeName?: string | undefined;
+    colorName?: string | undefined;
+    sizeFormatId!: number;
+    itemVarienceImage?: string | undefined;
+    itemVarienceTitle?: string | undefined;
+    dealId?: string | undefined;
+    dealImage?: string | undefined;
+    dealTitle?: string | undefined;
+    dealBundleId?: string | undefined;
+    dealBundleTitle?: string | undefined;
+    dealBundleImage?: string | undefined;
+    storeId?: string | undefined;
+    storeName?: string | undefined;
+    storeImage?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    orderItemStatusType!: OrderItemStatusType;
+    orderItemType!: OrderItemType;
+
+    constructor(data?: IOrderItemsByStoreIdApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.orderId = _data["orderId"];
+            this.qrImage = _data["qrImage"];
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.typeColorId = _data["typeColorId"];
+            this.colorId = _data["colorId"];
+            this.sizeId = _data["sizeId"];
+            this.sizeName = _data["sizeName"];
+            this.colorName = _data["colorName"];
+            this.sizeFormatId = _data["sizeFormatId"];
+            this.itemVarienceImage = _data["itemVarienceImage"];
+            this.itemVarienceTitle = _data["itemVarienceTitle"];
+            this.dealId = _data["dealId"];
+            this.dealImage = _data["dealImage"];
+            this.dealTitle = _data["dealTitle"];
+            this.dealBundleId = _data["dealBundleId"];
+            this.dealBundleTitle = _data["dealBundleTitle"];
+            this.dealBundleImage = _data["dealBundleImage"];
+            this.storeId = _data["storeId"];
+            this.storeName = _data["storeName"];
+            this.storeImage = _data["storeImage"];
+            this.price = _data["price"];
+            this.quantity = _data["quantity"];
+            this.taxAmount = _data["taxAmount"];
+            this.orderItemStatusType = _data["orderItemStatusType"];
+            this.orderItemType = _data["orderItemType"];
+        }
+    }
+
+    static fromJS(data: any): OrderItemsByStoreIdApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new OrderItemsByStoreIdApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["orderId"] = this.orderId;
+        data["qrImage"] = this.qrImage;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["typeColorId"] = this.typeColorId;
+        data["colorId"] = this.colorId;
+        data["sizeId"] = this.sizeId;
+        data["sizeName"] = this.sizeName;
+        data["colorName"] = this.colorName;
+        data["sizeFormatId"] = this.sizeFormatId;
+        data["itemVarienceImage"] = this.itemVarienceImage;
+        data["itemVarienceTitle"] = this.itemVarienceTitle;
+        data["dealId"] = this.dealId;
+        data["dealImage"] = this.dealImage;
+        data["dealTitle"] = this.dealTitle;
+        data["dealBundleId"] = this.dealBundleId;
+        data["dealBundleTitle"] = this.dealBundleTitle;
+        data["dealBundleImage"] = this.dealBundleImage;
+        data["storeId"] = this.storeId;
+        data["storeName"] = this.storeName;
+        data["storeImage"] = this.storeImage;
+        data["price"] = this.price;
+        data["quantity"] = this.quantity;
+        data["taxAmount"] = this.taxAmount;
+        data["orderItemStatusType"] = this.orderItemStatusType;
+        data["orderItemType"] = this.orderItemType;
+        return data; 
+    }
+}
+
+export interface IOrderItemsByStoreIdApiResponse {
+    id: string;
+    orderId: string;
+    qrImage?: string | undefined;
+    itemVarianceId: string;
+    typeColorId: number;
+    colorId: number;
+    sizeId: number;
+    sizeName?: string | undefined;
+    colorName?: string | undefined;
+    sizeFormatId: number;
+    itemVarienceImage?: string | undefined;
+    itemVarienceTitle?: string | undefined;
+    dealId?: string | undefined;
+    dealImage?: string | undefined;
+    dealTitle?: string | undefined;
+    dealBundleId?: string | undefined;
+    dealBundleTitle?: string | undefined;
+    dealBundleImage?: string | undefined;
+    storeId?: string | undefined;
+    storeName?: string | undefined;
+    storeImage?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    orderItemStatusType: OrderItemStatusType;
+    orderItemType: OrderItemType;
+}
+
+export class UpdateStatusApiRequest implements IUpdateStatusApiRequest {
+    items?: UpdateStatusItem[] | undefined;
+
+    constructor(data?: IUpdateStatusApiRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["items"])) {
+                this.items = [] as any;
+                for (let item of _data["items"])
+                    this.items!.push(UpdateStatusItem.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): UpdateStatusApiRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateStatusApiRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.items)) {
+            data["items"] = [];
+            for (let item of this.items)
+                data["items"].push(item.toJSON());
+        }
+        return data; 
+    }
+}
+
+export interface IUpdateStatusApiRequest {
+    items?: UpdateStatusItem[] | undefined;
+}
+
+export class UpdateStatusItem implements IUpdateStatusItem {
+    orderItemId?: string | undefined;
+    orderItemStatusType!: OrderItemStatusType;
+
+    constructor(data?: IUpdateStatusItem) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.orderItemId = _data["orderItemId"];
+            this.orderItemStatusType = _data["orderItemStatusType"];
+        }
+    }
+
+    static fromJS(data: any): UpdateStatusItem {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateStatusItem();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["orderItemId"] = this.orderItemId;
+        data["orderItemStatusType"] = this.orderItemStatusType;
+        return data; 
+    }
+}
+
+export interface IUpdateStatusItem {
+    orderItemId?: string | undefined;
+    orderItemStatusType: OrderItemStatusType;
+}
+
+export class PagedResponseOfGetOrderItemsByStoreIdApiResponse implements IPagedResponseOfGetOrderItemsByStoreIdApiResponse {
+    data?: GetOrderItemsByStoreIdApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfGetOrderItemsByStoreIdApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(GetOrderItemsByStoreIdApiResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfGetOrderItemsByStoreIdApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfGetOrderItemsByStoreIdApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfGetOrderItemsByStoreIdApiResponse {
+    data?: GetOrderItemsByStoreIdApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class GetOrderItemsByStoreIdApiResponse implements IGetOrderItemsByStoreIdApiResponse {
+    orderItems?: OrderItemsByStoreIdApiResponse[] | undefined;
+    totalPrice!: number;
+    subTotalPrice!: number;
+    totalTaxPrice!: number;
+    totalRefund!: number;
+    qrImage?: string | undefined;
+    orderPersonImage?: string | undefined;
+    orderPersonName?: string | undefined;
+    orderPersonContact?: string | undefined;
+    orderStatus!: OrderStatusType;
+    orderDate!: moment.Moment;
+    orderDisplayNo?: string | undefined;
+
+    constructor(data?: IGetOrderItemsByStoreIdApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["orderItems"])) {
+                this.orderItems = [] as any;
+                for (let item of _data["orderItems"])
+                    this.orderItems!.push(OrderItemsByStoreIdApiResponse.fromJS(item));
+            }
+            this.totalPrice = _data["totalPrice"];
+            this.subTotalPrice = _data["subTotalPrice"];
+            this.totalTaxPrice = _data["totalTaxPrice"];
+            this.totalRefund = _data["totalRefund"];
+            this.qrImage = _data["qrImage"];
+            this.orderPersonImage = _data["orderPersonImage"];
+            this.orderPersonName = _data["orderPersonName"];
+            this.orderPersonContact = _data["orderPersonContact"];
+            this.orderStatus = _data["orderStatus"];
+            this.orderDate = _data["orderDate"] ? moment(_data["orderDate"].toString()) : <any>undefined;
+            this.orderDisplayNo = _data["orderDisplayNo"];
+        }
+    }
+
+    static fromJS(data: any): GetOrderItemsByStoreIdApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetOrderItemsByStoreIdApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.orderItems)) {
+            data["orderItems"] = [];
+            for (let item of this.orderItems)
+                data["orderItems"].push(item.toJSON());
+        }
+        data["totalPrice"] = this.totalPrice;
+        data["subTotalPrice"] = this.subTotalPrice;
+        data["totalTaxPrice"] = this.totalTaxPrice;
+        data["totalRefund"] = this.totalRefund;
+        data["qrImage"] = this.qrImage;
+        data["orderPersonImage"] = this.orderPersonImage;
+        data["orderPersonName"] = this.orderPersonName;
+        data["orderPersonContact"] = this.orderPersonContact;
+        data["orderStatus"] = this.orderStatus;
+        data["orderDate"] = this.orderDate ? this.orderDate.toISOString() : <any>undefined;
+        data["orderDisplayNo"] = this.orderDisplayNo;
+        return data; 
+    }
+}
+
+export interface IGetOrderItemsByStoreIdApiResponse {
+    orderItems?: OrderItemsByStoreIdApiResponse[] | undefined;
+    totalPrice: number;
+    subTotalPrice: number;
+    totalTaxPrice: number;
+    totalRefund: number;
+    qrImage?: string | undefined;
+    orderPersonImage?: string | undefined;
+    orderPersonName?: string | undefined;
+    orderPersonContact?: string | undefined;
+    orderStatus: OrderStatusType;
+    orderDate: moment.Moment;
+    orderDisplayNo?: string | undefined;
+}
+
+export enum MobileOrderStatusType {
+    OrderReceived = 1,
+    Pending = 2,
+    Completeded = 3,
+}
+
+export class ResponseOfGetOrderMetaDataApiResponse implements IResponseOfGetOrderMetaDataApiResponse {
+    data?: GetOrderMetaDataApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfGetOrderMetaDataApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? GetOrderMetaDataApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfGetOrderMetaDataApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfGetOrderMetaDataApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfGetOrderMetaDataApiResponse {
+    data?: GetOrderMetaDataApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class GetOrderMetaDataApiResponse implements IGetOrderMetaDataApiResponse {
+    totalSales!: number;
+    newCustomers!: number;
+    transactions!: number;
+
+    constructor(data?: IGetOrderMetaDataApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.totalSales = _data["totalSales"];
+            this.newCustomers = _data["newCustomers"];
+            this.transactions = _data["transactions"];
+        }
+    }
+
+    static fromJS(data: any): GetOrderMetaDataApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetOrderMetaDataApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["totalSales"] = this.totalSales;
+        data["newCustomers"] = this.newCustomers;
+        data["transactions"] = this.transactions;
+        return data; 
+    }
+}
+
+export interface IGetOrderMetaDataApiResponse {
+    totalSales: number;
+    newCustomers: number;
+    transactions: number;
+}
+
+export class ResponseOfGetCompletedOrderDetailsApiResponse implements IResponseOfGetCompletedOrderDetailsApiResponse {
+    data?: GetCompletedOrderDetailsApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfGetCompletedOrderDetailsApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? GetCompletedOrderDetailsApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfGetCompletedOrderDetailsApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfGetCompletedOrderDetailsApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfGetCompletedOrderDetailsApiResponse {
+    data?: GetCompletedOrderDetailsApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class GetCompletedOrderDetailsApiResponse implements IGetCompletedOrderDetailsApiResponse {
+    isOrderCompleted!: boolean;
+    errorMessage?: string | undefined;
+    itemList?: UpdateStatusApiResponse | undefined;
+
+    constructor(data?: IGetCompletedOrderDetailsApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isOrderCompleted = _data["isOrderCompleted"];
+            this.errorMessage = _data["errorMessage"];
+            this.itemList = _data["itemList"] ? UpdateStatusApiResponse.fromJS(_data["itemList"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): GetCompletedOrderDetailsApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetCompletedOrderDetailsApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isOrderCompleted"] = this.isOrderCompleted;
+        data["errorMessage"] = this.errorMessage;
+        data["itemList"] = this.itemList ? this.itemList.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IGetCompletedOrderDetailsApiResponse {
+    isOrderCompleted: boolean;
+    errorMessage?: string | undefined;
+    itemList?: UpdateStatusApiResponse | undefined;
+}
+
+export class ResponseOfAddToShoppingCartApiResponse implements IResponseOfAddToShoppingCartApiResponse {
+    data?: AddToShoppingCartApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfAddToShoppingCartApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? AddToShoppingCartApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfAddToShoppingCartApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfAddToShoppingCartApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfAddToShoppingCartApiResponse {
+    data?: AddToShoppingCartApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class AddToShoppingCartApiResponse implements IAddToShoppingCartApiResponse {
+    count!: number;
+
+    constructor(data?: IAddToShoppingCartApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.count = _data["count"];
+        }
+    }
+
+    static fromJS(data: any): AddToShoppingCartApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new AddToShoppingCartApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["count"] = this.count;
+        return data; 
+    }
+}
+
+export interface IAddToShoppingCartApiResponse {
+    count: number;
+}
+
+export class AddToShoppingCartApiRequest implements IAddToShoppingCartApiRequest {
+    itemVarianceId?: string | undefined;
+    dealId?: string | undefined;
+    dealBundleId?: string | undefined;
+    price!: number;
+    quantity!: number;
+    shoppingItemType!: ShoppingItemType;
+
+    constructor(data?: IAddToShoppingCartApiRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.dealId = _data["dealId"];
+            this.dealBundleId = _data["dealBundleId"];
+            this.price = _data["price"];
+            this.quantity = _data["quantity"];
+            this.shoppingItemType = _data["shoppingItemType"];
+        }
+    }
+
+    static fromJS(data: any): AddToShoppingCartApiRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new AddToShoppingCartApiRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["dealId"] = this.dealId;
+        data["dealBundleId"] = this.dealBundleId;
+        data["price"] = this.price;
+        data["quantity"] = this.quantity;
+        data["shoppingItemType"] = this.shoppingItemType;
+        return data; 
+    }
+}
+
+export interface IAddToShoppingCartApiRequest {
+    itemVarianceId?: string | undefined;
+    dealId?: string | undefined;
+    dealBundleId?: string | undefined;
+    price: number;
+    quantity: number;
+    shoppingItemType: ShoppingItemType;
+}
+
+export enum ShoppingItemType {
+    NormalItem = 1,
+    DealItem = 2,
+    BundleItem = 3,
+}
+
+export class ResponseOfGetShoppingCartApiResponse implements IResponseOfGetShoppingCartApiResponse {
+    data?: GetShoppingCartApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfGetShoppingCartApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? GetShoppingCartApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfGetShoppingCartApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfGetShoppingCartApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfGetShoppingCartApiResponse {
+    data?: GetShoppingCartApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class GetShoppingCartApiResponse implements IGetShoppingCartApiResponse {
+    id?: string | undefined;
+    userProfileId!: number;
+    shoppingCartItem?: GetShoppingCartApiItemResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+
+    constructor(data?: IGetShoppingCartApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.userProfileId = _data["userProfileId"];
+            if (Array.isArray(_data["shoppingCartItem"])) {
+                this.shoppingCartItem = [] as any;
+                for (let item of _data["shoppingCartItem"])
+                    this.shoppingCartItem!.push(GetShoppingCartApiItemResponse.fromJS(item));
+            }
+            this.totalPrice = _data["totalPrice"];
+            this.subTotal = _data["subTotal"];
+            this.totalTax = _data["totalTax"];
+        }
+    }
+
+    static fromJS(data: any): GetShoppingCartApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetShoppingCartApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["userProfileId"] = this.userProfileId;
+        if (Array.isArray(this.shoppingCartItem)) {
+            data["shoppingCartItem"] = [];
+            for (let item of this.shoppingCartItem)
+                data["shoppingCartItem"].push(item.toJSON());
+        }
+        data["totalPrice"] = this.totalPrice;
+        data["subTotal"] = this.subTotal;
+        data["totalTax"] = this.totalTax;
+        return data; 
+    }
+}
+
+export interface IGetShoppingCartApiResponse {
+    id?: string | undefined;
+    userProfileId: number;
+    shoppingCartItem?: GetShoppingCartApiItemResponse[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+}
+
+export class GetShoppingCartApiItemResponse implements IGetShoppingCartApiItemResponse {
+    id?: string | undefined;
+    shoppingCartId!: string;
+    itemVarianceId?: string | undefined;
+    typeColorId!: number;
+    colorId!: number;
+    sizeId!: number;
+    sizeName?: string | undefined;
+    colorName?: string | undefined;
+    sizeFormatId!: number;
+    itemVarienceImage?: string | undefined;
+    itemVarienceTitle?: string | undefined;
+    dealId?: string | undefined;
+    dealImage?: string | undefined;
+    dealTitle?: string | undefined;
+    dealBundleId?: string | undefined;
+    dealBundleTitle?: string | undefined;
+    dealBundleImage?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    isCheckedOut!: boolean;
+    shoppingItemType!: ShoppingItemType;
+
+    constructor(data?: IGetShoppingCartApiItemResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.shoppingCartId = _data["shoppingCartId"];
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.typeColorId = _data["typeColorId"];
+            this.colorId = _data["colorId"];
+            this.sizeId = _data["sizeId"];
+            this.sizeName = _data["sizeName"];
+            this.colorName = _data["colorName"];
+            this.sizeFormatId = _data["sizeFormatId"];
+            this.itemVarienceImage = _data["itemVarienceImage"];
+            this.itemVarienceTitle = _data["itemVarienceTitle"];
+            this.dealId = _data["dealId"];
+            this.dealImage = _data["dealImage"];
+            this.dealTitle = _data["dealTitle"];
+            this.dealBundleId = _data["dealBundleId"];
+            this.dealBundleTitle = _data["dealBundleTitle"];
+            this.dealBundleImage = _data["dealBundleImage"];
+            this.price = _data["price"];
+            this.quantity = _data["quantity"];
+            this.taxAmount = _data["taxAmount"];
+            this.isCheckedOut = _data["isCheckedOut"];
+            this.shoppingItemType = _data["shoppingItemType"];
+        }
+    }
+
+    static fromJS(data: any): GetShoppingCartApiItemResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetShoppingCartApiItemResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["shoppingCartId"] = this.shoppingCartId;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["typeColorId"] = this.typeColorId;
+        data["colorId"] = this.colorId;
+        data["sizeId"] = this.sizeId;
+        data["sizeName"] = this.sizeName;
+        data["colorName"] = this.colorName;
+        data["sizeFormatId"] = this.sizeFormatId;
+        data["itemVarienceImage"] = this.itemVarienceImage;
+        data["itemVarienceTitle"] = this.itemVarienceTitle;
+        data["dealId"] = this.dealId;
+        data["dealImage"] = this.dealImage;
+        data["dealTitle"] = this.dealTitle;
+        data["dealBundleId"] = this.dealBundleId;
+        data["dealBundleTitle"] = this.dealBundleTitle;
+        data["dealBundleImage"] = this.dealBundleImage;
+        data["price"] = this.price;
+        data["quantity"] = this.quantity;
+        data["taxAmount"] = this.taxAmount;
+        data["isCheckedOut"] = this.isCheckedOut;
+        data["shoppingItemType"] = this.shoppingItemType;
+        return data; 
+    }
+}
+
+export interface IGetShoppingCartApiItemResponse {
+    id?: string | undefined;
+    shoppingCartId: string;
+    itemVarianceId?: string | undefined;
+    typeColorId: number;
+    colorId: number;
+    sizeId: number;
+    sizeName?: string | undefined;
+    colorName?: string | undefined;
+    sizeFormatId: number;
+    itemVarienceImage?: string | undefined;
+    itemVarienceTitle?: string | undefined;
+    dealId?: string | undefined;
+    dealImage?: string | undefined;
+    dealTitle?: string | undefined;
+    dealBundleId?: string | undefined;
+    dealBundleTitle?: string | undefined;
+    dealBundleImage?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    isCheckedOut: boolean;
+    shoppingItemType: ShoppingItemType;
+}
+
+export class GetShoppingCartApiRequest implements IGetShoppingCartApiRequest {
+
+    constructor(data?: IGetShoppingCartApiRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+    }
+
+    static fromJS(data: any): GetShoppingCartApiRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetShoppingCartApiRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        return data; 
+    }
+}
+
+export interface IGetShoppingCartApiRequest {
+}
+
+export class ResponseOfUpdateShoppingCartItemApiResponse implements IResponseOfUpdateShoppingCartItemApiResponse {
+    data?: UpdateShoppingCartItemApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfUpdateShoppingCartItemApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? UpdateShoppingCartItemApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfUpdateShoppingCartItemApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfUpdateShoppingCartItemApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfUpdateShoppingCartItemApiResponse {
+    data?: UpdateShoppingCartItemApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class UpdateShoppingCartItemApiResponse implements IUpdateShoppingCartItemApiResponse {
+    totalPrice!: number;
+
+    constructor(data?: IUpdateShoppingCartItemApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.totalPrice = _data["totalPrice"];
+        }
+    }
+
+    static fromJS(data: any): UpdateShoppingCartItemApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateShoppingCartItemApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["totalPrice"] = this.totalPrice;
+        return data; 
+    }
+}
+
+export interface IUpdateShoppingCartItemApiResponse {
+    totalPrice: number;
+}
+
+export class ResponseOfDeleteShoppingCartApiResponse implements IResponseOfDeleteShoppingCartApiResponse {
+    data?: DeleteShoppingCartApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfDeleteShoppingCartApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? DeleteShoppingCartApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfDeleteShoppingCartApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfDeleteShoppingCartApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfDeleteShoppingCartApiResponse {
+    data?: DeleteShoppingCartApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class DeleteShoppingCartApiResponse implements IDeleteShoppingCartApiResponse {
+    id?: string | undefined;
+    userProfileId!: number;
+    shoppingCartItem?: DeleteShoppingCartItemApiResponseModel[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+
+    constructor(data?: IDeleteShoppingCartApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.userProfileId = _data["userProfileId"];
+            if (Array.isArray(_data["shoppingCartItem"])) {
+                this.shoppingCartItem = [] as any;
+                for (let item of _data["shoppingCartItem"])
+                    this.shoppingCartItem!.push(DeleteShoppingCartItemApiResponseModel.fromJS(item));
+            }
+            this.totalPrice = _data["totalPrice"];
+            this.subTotal = _data["subTotal"];
+            this.totalTax = _data["totalTax"];
+        }
+    }
+
+    static fromJS(data: any): DeleteShoppingCartApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new DeleteShoppingCartApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["userProfileId"] = this.userProfileId;
+        if (Array.isArray(this.shoppingCartItem)) {
+            data["shoppingCartItem"] = [];
+            for (let item of this.shoppingCartItem)
+                data["shoppingCartItem"].push(item.toJSON());
+        }
+        data["totalPrice"] = this.totalPrice;
+        data["subTotal"] = this.subTotal;
+        data["totalTax"] = this.totalTax;
+        return data; 
+    }
+}
+
+export interface IDeleteShoppingCartApiResponse {
+    id?: string | undefined;
+    userProfileId: number;
+    shoppingCartItem?: DeleteShoppingCartItemApiResponseModel[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+}
+
+export class DeleteShoppingCartItemApiResponseModel implements IDeleteShoppingCartItemApiResponseModel {
+    id?: string | undefined;
+    shoppingCartId!: string;
+    itemVarianceId?: string | undefined;
+    dealId?: string | undefined;
+    dealBundleId?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    isCheckedOut!: boolean;
+    shoppingItemType!: ShoppingItemType;
+
+    constructor(data?: IDeleteShoppingCartItemApiResponseModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.shoppingCartId = _data["shoppingCartId"];
+            this.itemVarianceId = _data["itemVarianceId"];
+            this.dealId = _data["dealId"];
+            this.dealBundleId = _data["dealBundleId"];
+            this.price = _data["price"];
+            this.quantity = _data["quantity"];
+            this.taxAmount = _data["taxAmount"];
+            this.isCheckedOut = _data["isCheckedOut"];
+            this.shoppingItemType = _data["shoppingItemType"];
+        }
+    }
+
+    static fromJS(data: any): DeleteShoppingCartItemApiResponseModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new DeleteShoppingCartItemApiResponseModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["shoppingCartId"] = this.shoppingCartId;
+        data["itemVarianceId"] = this.itemVarianceId;
+        data["dealId"] = this.dealId;
+        data["dealBundleId"] = this.dealBundleId;
+        data["price"] = this.price;
+        data["quantity"] = this.quantity;
+        data["taxAmount"] = this.taxAmount;
+        data["isCheckedOut"] = this.isCheckedOut;
+        data["shoppingItemType"] = this.shoppingItemType;
+        return data; 
+    }
+}
+
+export interface IDeleteShoppingCartItemApiResponseModel {
+    id?: string | undefined;
+    shoppingCartId: string;
+    itemVarianceId?: string | undefined;
+    dealId?: string | undefined;
+    dealBundleId?: string | undefined;
+    price?: number | undefined;
+    quantity?: number | undefined;
+    taxAmount?: number | undefined;
+    isCheckedOut: boolean;
+    shoppingItemType: ShoppingItemType;
+}
+
+export class ResponseOfDeleteShoppingCartItemApiResponse implements IResponseOfDeleteShoppingCartItemApiResponse {
+    data?: DeleteShoppingCartItemApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfDeleteShoppingCartItemApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? DeleteShoppingCartItemApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfDeleteShoppingCartItemApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfDeleteShoppingCartItemApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfDeleteShoppingCartItemApiResponse {
+    data?: DeleteShoppingCartItemApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class DeleteShoppingCartItemApiResponse implements IDeleteShoppingCartItemApiResponse {
+    id?: string | undefined;
+    userProfileId!: number;
+    shoppingCartItem?: DeleteShoppingCartItemApiResponseModel[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+
+    constructor(data?: IDeleteShoppingCartItemApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.userProfileId = _data["userProfileId"];
+            if (Array.isArray(_data["shoppingCartItem"])) {
+                this.shoppingCartItem = [] as any;
+                for (let item of _data["shoppingCartItem"])
+                    this.shoppingCartItem!.push(DeleteShoppingCartItemApiResponseModel.fromJS(item));
+            }
+            this.totalPrice = _data["totalPrice"];
+            this.subTotal = _data["subTotal"];
+            this.totalTax = _data["totalTax"];
+        }
+    }
+
+    static fromJS(data: any): DeleteShoppingCartItemApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new DeleteShoppingCartItemApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["userProfileId"] = this.userProfileId;
+        if (Array.isArray(this.shoppingCartItem)) {
+            data["shoppingCartItem"] = [];
+            for (let item of this.shoppingCartItem)
+                data["shoppingCartItem"].push(item.toJSON());
+        }
+        data["totalPrice"] = this.totalPrice;
+        data["subTotal"] = this.subTotal;
+        data["totalTax"] = this.totalTax;
+        return data; 
+    }
+}
+
+export interface IDeleteShoppingCartItemApiResponse {
+    id?: string | undefined;
+    userProfileId: number;
+    shoppingCartItem?: DeleteShoppingCartItemApiResponseModel[] | undefined;
+    totalPrice?: number | undefined;
+    subTotal?: number | undefined;
+    totalTax?: number | undefined;
+}
+
+export class ResponseOfValidateShopingCartItemApiResponse implements IResponseOfValidateShopingCartItemApiResponse {
+    data?: ValidateShopingCartItemApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfValidateShopingCartItemApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? ValidateShopingCartItemApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfValidateShopingCartItemApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfValidateShopingCartItemApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfValidateShopingCartItemApiResponse {
+    data?: ValidateShopingCartItemApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class ValidateShopingCartItemApiResponse implements IValidateShopingCartItemApiResponse {
+    valdationList?: ValidatedDetailsShopingCartItem[] | undefined;
+
+    constructor(data?: IValidateShopingCartItemApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["valdationList"])) {
+                this.valdationList = [] as any;
+                for (let item of _data["valdationList"])
+                    this.valdationList!.push(ValidatedDetailsShopingCartItem.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): ValidateShopingCartItemApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ValidateShopingCartItemApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.valdationList)) {
+            data["valdationList"] = [];
+            for (let item of this.valdationList)
+                data["valdationList"].push(item.toJSON());
+        }
+        return data; 
+    }
+}
+
+export interface IValidateShopingCartItemApiResponse {
+    valdationList?: ValidatedDetailsShopingCartItem[] | undefined;
+}
+
+export class ValidatedDetailsShopingCartItem implements IValidatedDetailsShopingCartItem {
+    cartItemId?: string | undefined;
+    isValid!: boolean;
+    errorMessages?: string[] | undefined;
+
+    constructor(data?: IValidatedDetailsShopingCartItem) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.cartItemId = _data["cartItemId"];
+            this.isValid = _data["isValid"];
+            if (Array.isArray(_data["errorMessages"])) {
+                this.errorMessages = [] as any;
+                for (let item of _data["errorMessages"])
+                    this.errorMessages!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): ValidatedDetailsShopingCartItem {
+        data = typeof data === 'object' ? data : {};
+        let result = new ValidatedDetailsShopingCartItem();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["cartItemId"] = this.cartItemId;
+        data["isValid"] = this.isValid;
+        if (Array.isArray(this.errorMessages)) {
+            data["errorMessages"] = [];
+            for (let item of this.errorMessages)
+                data["errorMessages"].push(item);
+        }
+        return data; 
+    }
+}
+
+export interface IValidatedDetailsShopingCartItem {
+    cartItemId?: string | undefined;
+    isValid: boolean;
+    errorMessages?: string[] | undefined;
+}
+
+export class ResponseOfStoreCategoryCreateApiResponse implements IResponseOfStoreCategoryCreateApiResponse {
+    data?: StoreCategoryCreateApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfStoreCategoryCreateApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? StoreCategoryCreateApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfStoreCategoryCreateApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfStoreCategoryCreateApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfStoreCategoryCreateApiResponse {
+    data?: StoreCategoryCreateApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class StoreCategoryCreateApiResponse implements IStoreCategoryCreateApiResponse {
+    id!: number;
+    name?: string | undefined;
+    description?: string | undefined;
+    iconId?: string | undefined;
+
+    constructor(data?: IStoreCategoryCreateApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.description = _data["description"];
+            this.iconId = _data["iconId"];
+        }
+    }
+
+    static fromJS(data: any): StoreCategoryCreateApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new StoreCategoryCreateApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["description"] = this.description;
+        data["iconId"] = this.iconId;
+        return data; 
+    }
+}
+
+export interface IStoreCategoryCreateApiResponse {
+    id: number;
+    name?: string | undefined;
+    description?: string | undefined;
+    iconId?: string | undefined;
+}
+
+export class PagedResponseOfStoreCategoryGetApiResponse implements IPagedResponseOfStoreCategoryGetApiResponse {
+    data?: StoreCategoryGetApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfStoreCategoryGetApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(StoreCategoryGetApiResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfStoreCategoryGetApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfStoreCategoryGetApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfStoreCategoryGetApiResponse {
+    data?: StoreCategoryGetApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class StoreCategoryGetApiResponse implements IStoreCategoryGetApiResponse {
+    id?: string | undefined;
+    name?: string | undefined;
+    description?: string | undefined;
+    iconId?: string | undefined;
+
+    constructor(data?: IStoreCategoryGetApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.description = _data["description"];
+            this.iconId = _data["iconId"];
+        }
+    }
+
+    static fromJS(data: any): StoreCategoryGetApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new StoreCategoryGetApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["description"] = this.description;
+        data["iconId"] = this.iconId;
+        return data; 
+    }
+}
+
+export interface IStoreCategoryGetApiResponse {
+    id?: string | undefined;
+    name?: string | undefined;
+    description?: string | undefined;
+    iconId?: string | undefined;
+}
+
+export class ResponseOfStoreGetApiResponse implements IResponseOfStoreGetApiResponse {
+    data?: StoreGetApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfStoreGetApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? StoreGetApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfStoreGetApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfStoreGetApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfStoreGetApiResponse {
+    data?: StoreGetApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class StoreGetApiResponse implements IStoreGetApiResponse {
+    id!: string;
+    storeName?: string | undefined;
+    storeDescription?: string | undefined;
+    logo?: string | undefined;
+    logoType?: string | undefined;
+    isApproved?: boolean | undefined;
+    qrImage?: string | undefined;
+    pdfId?: string | undefined;
+    stepCompleted!: number;
+    storeAbn?: string | undefined;
+    rejectReason?: string | undefined;
+    isActive!: boolean;
+    isFollowing!: boolean;
+    totalPostsCount!: number;
+    totalFollowersCount!: number;
+    webSite?: string | undefined;
+    floorNumber?: string | undefined;
+    shopNumber?: string | undefined;
+    storeCategories?: StoreCategoryApiModel[] | undefined;
+
+    constructor(data?: IStoreGetApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.storeName = _data["storeName"];
+            this.storeDescription = _data["storeDescription"];
+            this.logo = _data["logo"];
+            this.logoType = _data["logoType"];
+            this.isApproved = _data["isApproved"];
+            this.qrImage = _data["qrImage"];
+            this.pdfId = _data["pdfId"];
+            this.stepCompleted = _data["stepCompleted"];
+            this.storeAbn = _data["storeAbn"];
+            this.rejectReason = _data["rejectReason"];
+            this.isActive = _data["isActive"];
+            this.isFollowing = _data["isFollowing"];
+            this.totalPostsCount = _data["totalPostsCount"];
+            this.totalFollowersCount = _data["totalFollowersCount"];
+            this.webSite = _data["webSite"];
+            this.floorNumber = _data["floorNumber"];
+            this.shopNumber = _data["shopNumber"];
+            if (Array.isArray(_data["storeCategories"])) {
+                this.storeCategories = [] as any;
+                for (let item of _data["storeCategories"])
+                    this.storeCategories!.push(StoreCategoryApiModel.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): StoreGetApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new StoreGetApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["storeName"] = this.storeName;
+        data["storeDescription"] = this.storeDescription;
+        data["logo"] = this.logo;
+        data["logoType"] = this.logoType;
+        data["isApproved"] = this.isApproved;
+        data["qrImage"] = this.qrImage;
+        data["pdfId"] = this.pdfId;
+        data["stepCompleted"] = this.stepCompleted;
+        data["storeAbn"] = this.storeAbn;
+        data["rejectReason"] = this.rejectReason;
+        data["isActive"] = this.isActive;
+        data["isFollowing"] = this.isFollowing;
+        data["totalPostsCount"] = this.totalPostsCount;
+        data["totalFollowersCount"] = this.totalFollowersCount;
+        data["webSite"] = this.webSite;
+        data["floorNumber"] = this.floorNumber;
+        data["shopNumber"] = this.shopNumber;
+        if (Array.isArray(this.storeCategories)) {
+            data["storeCategories"] = [];
+            for (let item of this.storeCategories)
+                data["storeCategories"].push(item.toJSON());
+        }
+        return data; 
+    }
+}
+
+export interface IStoreGetApiResponse {
+    id: string;
+    storeName?: string | undefined;
+    storeDescription?: string | undefined;
+    logo?: string | undefined;
+    logoType?: string | undefined;
+    isApproved?: boolean | undefined;
+    qrImage?: string | undefined;
+    pdfId?: string | undefined;
+    stepCompleted: number;
+    storeAbn?: string | undefined;
+    rejectReason?: string | undefined;
+    isActive: boolean;
+    isFollowing: boolean;
+    totalPostsCount: number;
+    totalFollowersCount: number;
+    webSite?: string | undefined;
+    floorNumber?: string | undefined;
+    shopNumber?: string | undefined;
+    storeCategories?: StoreCategoryApiModel[] | undefined;
+}
+
+export class StoreCategoryApiModel implements IStoreCategoryApiModel {
+    id!: string;
+    name?: string | undefined;
+    description?: string | undefined;
+    image?: string | undefined;
+    imageType?: string | undefined;
+
+    constructor(data?: IStoreCategoryApiModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.description = _data["description"];
+            this.image = _data["image"];
+            this.imageType = _data["imageType"];
+        }
+    }
+
+    static fromJS(data: any): StoreCategoryApiModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new StoreCategoryApiModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["description"] = this.description;
+        data["image"] = this.image;
+        data["imageType"] = this.imageType;
+        return data; 
+    }
+}
+
+export interface IStoreCategoryApiModel {
+    id: string;
+    name?: string | undefined;
+    description?: string | undefined;
+    image?: string | undefined;
+    imageType?: string | undefined;
+}
+
+export class PagedResponseOfSearchStoreApiResponse implements IPagedResponseOfSearchStoreApiResponse {
+    data?: SearchStoreApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfSearchStoreApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(SearchStoreApiResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfSearchStoreApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfSearchStoreApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfSearchStoreApiResponse {
+    data?: SearchStoreApiResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class SearchStoreApiResponse implements ISearchStoreApiResponse {
+    id!: string;
+    storeName?: string | undefined;
+    storeDescription?: string | undefined;
+    logo?: string | undefined;
+    logoType?: string | undefined;
+    isApproved?: boolean | undefined;
+    qrImage?: string | undefined;
+    pdfId?: string | undefined;
+    stepCompleted!: number;
+    storeAbn?: string | undefined;
+    rejectReason?: string | undefined;
+    isActive!: boolean;
+    isFollowing!: boolean;
+
+    constructor(data?: ISearchStoreApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.storeName = _data["storeName"];
+            this.storeDescription = _data["storeDescription"];
+            this.logo = _data["logo"];
+            this.logoType = _data["logoType"];
+            this.isApproved = _data["isApproved"];
+            this.qrImage = _data["qrImage"];
+            this.pdfId = _data["pdfId"];
+            this.stepCompleted = _data["stepCompleted"];
+            this.storeAbn = _data["storeAbn"];
+            this.rejectReason = _data["rejectReason"];
+            this.isActive = _data["isActive"];
+            this.isFollowing = _data["isFollowing"];
+        }
+    }
+
+    static fromJS(data: any): SearchStoreApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SearchStoreApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["storeName"] = this.storeName;
+        data["storeDescription"] = this.storeDescription;
+        data["logo"] = this.logo;
+        data["logoType"] = this.logoType;
+        data["isApproved"] = this.isApproved;
+        data["qrImage"] = this.qrImage;
+        data["pdfId"] = this.pdfId;
+        data["stepCompleted"] = this.stepCompleted;
+        data["storeAbn"] = this.storeAbn;
+        data["rejectReason"] = this.rejectReason;
+        data["isActive"] = this.isActive;
+        data["isFollowing"] = this.isFollowing;
+        return data; 
+    }
+}
+
+export interface ISearchStoreApiResponse {
+    id: string;
+    storeName?: string | undefined;
+    storeDescription?: string | undefined;
+    logo?: string | undefined;
+    logoType?: string | undefined;
+    isApproved?: boolean | undefined;
+    qrImage?: string | undefined;
+    pdfId?: string | undefined;
+    stepCompleted: number;
+    storeAbn?: string | undefined;
+    rejectReason?: string | undefined;
+    isActive: boolean;
+    isFollowing: boolean;
+}
+
+export class ResponseOfSetFollowStoreApiResponse implements IResponseOfSetFollowStoreApiResponse {
+    data?: SetFollowStoreApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfSetFollowStoreApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? SetFollowStoreApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfSetFollowStoreApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfSetFollowStoreApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfSetFollowStoreApiResponse {
+    data?: SetFollowStoreApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class SetFollowStoreApiResponse implements ISetFollowStoreApiResponse {
+    id!: string;
+    storeName?: string | undefined;
+    storeDescription?: string | undefined;
+    logo?: string | undefined;
+    logoType?: string | undefined;
+    isApproved?: boolean | undefined;
+    qrImage?: string | undefined;
+    pdfId?: string | undefined;
+    stepCompleted!: number;
+    storeAbn?: string | undefined;
+    rejectReason?: string | undefined;
+    isActive!: boolean;
+    isFollowing!: boolean;
+    statusCode!: number;
+    isSuccess!: boolean;
+    error?: string | undefined;
+
+    constructor(data?: ISetFollowStoreApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.storeName = _data["storeName"];
+            this.storeDescription = _data["storeDescription"];
+            this.logo = _data["logo"];
+            this.logoType = _data["logoType"];
+            this.isApproved = _data["isApproved"];
+            this.qrImage = _data["qrImage"];
+            this.pdfId = _data["pdfId"];
+            this.stepCompleted = _data["stepCompleted"];
+            this.storeAbn = _data["storeAbn"];
+            this.rejectReason = _data["rejectReason"];
+            this.isActive = _data["isActive"];
+            this.isFollowing = _data["isFollowing"];
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+            this.error = _data["error"];
+        }
+    }
+
+    static fromJS(data: any): SetFollowStoreApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SetFollowStoreApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["storeName"] = this.storeName;
+        data["storeDescription"] = this.storeDescription;
+        data["logo"] = this.logo;
+        data["logoType"] = this.logoType;
+        data["isApproved"] = this.isApproved;
+        data["qrImage"] = this.qrImage;
+        data["pdfId"] = this.pdfId;
+        data["stepCompleted"] = this.stepCompleted;
+        data["storeAbn"] = this.storeAbn;
+        data["rejectReason"] = this.rejectReason;
+        data["isActive"] = this.isActive;
+        data["isFollowing"] = this.isFollowing;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        data["error"] = this.error;
+        return data; 
+    }
+}
+
+export interface ISetFollowStoreApiResponse {
+    id: string;
+    storeName?: string | undefined;
+    storeDescription?: string | undefined;
+    logo?: string | undefined;
+    logoType?: string | undefined;
+    isApproved?: boolean | undefined;
+    qrImage?: string | undefined;
+    pdfId?: string | undefined;
+    stepCompleted: number;
+    storeAbn?: string | undefined;
+    rejectReason?: string | undefined;
+    isActive: boolean;
+    isFollowing: boolean;
+    statusCode: number;
+    isSuccess: boolean;
+    error?: string | undefined;
+}
+
+export class PagedResponseOfPagePostResponseModel implements IPagedResponseOfPagePostResponseModel {
+    data?: PagePostResponseModel[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfPagePostResponseModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(PagePostResponseModel.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfPagePostResponseModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfPagePostResponseModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfPagePostResponseModel {
+    data?: PagePostResponseModel[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class PagePostResponseModel implements IPagePostResponseModel {
+    id!: string;
+    title?: string | undefined;
+    description?: string | undefined;
+    pagePostTags?: string[] | undefined;
+    pagePostImages?: string[] | undefined;
+    storeId!: string;
+
+    constructor(data?: IPagePostResponseModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.title = _data["title"];
+            this.description = _data["description"];
+            if (Array.isArray(_data["pagePostTags"])) {
+                this.pagePostTags = [] as any;
+                for (let item of _data["pagePostTags"])
+                    this.pagePostTags!.push(item);
+            }
+            if (Array.isArray(_data["pagePostImages"])) {
+                this.pagePostImages = [] as any;
+                for (let item of _data["pagePostImages"])
+                    this.pagePostImages!.push(item);
+            }
+            this.storeId = _data["storeId"];
+        }
+    }
+
+    static fromJS(data: any): PagePostResponseModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagePostResponseModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["title"] = this.title;
+        data["description"] = this.description;
+        if (Array.isArray(this.pagePostTags)) {
+            data["pagePostTags"] = [];
+            for (let item of this.pagePostTags)
+                data["pagePostTags"].push(item);
+        }
+        if (Array.isArray(this.pagePostImages)) {
+            data["pagePostImages"] = [];
+            for (let item of this.pagePostImages)
+                data["pagePostImages"].push(item);
+        }
+        data["storeId"] = this.storeId;
+        return data; 
+    }
+}
+
+export interface IPagePostResponseModel {
+    id: string;
+    title?: string | undefined;
+    description?: string | undefined;
+    pagePostTags?: string[] | undefined;
+    pagePostImages?: string[] | undefined;
+    storeId: string;
+}
+
+export class ResponseOfGetUserProfileApiResponse implements IResponseOfGetUserProfileApiResponse {
+    data?: GetUserProfileApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfGetUserProfileApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? GetUserProfileApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfGetUserProfileApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfGetUserProfileApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfGetUserProfileApiResponse {
+    data?: GetUserProfileApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class GetUserProfileApiResponse implements IGetUserProfileApiResponse {
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    timeZone?: string | undefined;
+    gender!: Gender;
+    isMobileVerify!: boolean;
+    wishListCount!: number;
+    followersCount!: number;
+    followingCount!: number;
+    address?: UserAddressModel | undefined;
+    favoriteStore?: FavoriteStoreModel | undefined;
+
+    constructor(data?: IGetUserProfileApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.identityId = _data["identityId"];
+            this.firstName = _data["firstName"];
+            this.lastName = _data["lastName"];
+            this.phoneNumber = _data["phoneNumber"];
+            this.email = _data["email"];
+            this.profilePic = _data["profilePic"];
+            this.dateOfBirth = _data["dateOfBirth"] ? moment(_data["dateOfBirth"].toString()) : <any>undefined;
+            this.timeZone = _data["timeZone"];
+            this.gender = _data["gender"];
+            this.isMobileVerify = _data["isMobileVerify"];
+            this.wishListCount = _data["wishListCount"];
+            this.followersCount = _data["followersCount"];
+            this.followingCount = _data["followingCount"];
+            this.address = _data["address"] ? UserAddressModel.fromJS(_data["address"]) : <any>undefined;
+            this.favoriteStore = _data["favoriteStore"] ? FavoriteStoreModel.fromJS(_data["favoriteStore"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): GetUserProfileApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetUserProfileApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["identityId"] = this.identityId;
+        data["firstName"] = this.firstName;
+        data["lastName"] = this.lastName;
+        data["phoneNumber"] = this.phoneNumber;
+        data["email"] = this.email;
+        data["profilePic"] = this.profilePic;
+        data["dateOfBirth"] = this.dateOfBirth ? this.dateOfBirth.toISOString() : <any>undefined;
+        data["timeZone"] = this.timeZone;
+        data["gender"] = this.gender;
+        data["isMobileVerify"] = this.isMobileVerify;
+        data["wishListCount"] = this.wishListCount;
+        data["followersCount"] = this.followersCount;
+        data["followingCount"] = this.followingCount;
+        data["address"] = this.address ? this.address.toJSON() : <any>undefined;
+        data["favoriteStore"] = this.favoriteStore ? this.favoriteStore.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IGetUserProfileApiResponse {
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    timeZone?: string | undefined;
+    gender: Gender;
+    isMobileVerify: boolean;
+    wishListCount: number;
+    followersCount: number;
+    followingCount: number;
+    address?: UserAddressModel | undefined;
+    favoriteStore?: FavoriteStoreModel | undefined;
+}
+
+export enum Gender {
+    Female = 0,
+    Male = 1,
+    Other = 2,
+}
+
+export class UserAddressModel implements IUserAddressModel {
+    street?: string | undefined;
+    state?: string | undefined;
+    city?: string | undefined;
+    postalCode?: string | undefined;
+
+    constructor(data?: IUserAddressModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.street = _data["street"];
+            this.state = _data["state"];
+            this.city = _data["city"];
+            this.postalCode = _data["postalCode"];
+        }
+    }
+
+    static fromJS(data: any): UserAddressModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new UserAddressModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["street"] = this.street;
+        data["state"] = this.state;
+        data["city"] = this.city;
+        data["postalCode"] = this.postalCode;
+        return data; 
+    }
+}
+
+export interface IUserAddressModel {
+    street?: string | undefined;
+    state?: string | undefined;
+    city?: string | undefined;
+    postalCode?: string | undefined;
+}
+
+export class FavoriteStoreModel implements IFavoriteStoreModel {
+    id!: string;
+    storeName?: string | undefined;
+    logo?: string | undefined;
+
+    constructor(data?: IFavoriteStoreModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.storeName = _data["storeName"];
+            this.logo = _data["logo"];
+        }
+    }
+
+    static fromJS(data: any): FavoriteStoreModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new FavoriteStoreModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["storeName"] = this.storeName;
+        data["logo"] = this.logo;
+        return data; 
+    }
+}
+
+export interface IFavoriteStoreModel {
+    id: string;
+    storeName?: string | undefined;
+    logo?: string | undefined;
+}
+
+export class GetUserProfileApiRequeset implements IGetUserProfileApiRequeset {
+
+    constructor(data?: IGetUserProfileApiRequeset) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+    }
+
+    static fromJS(data: any): GetUserProfileApiRequeset {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetUserProfileApiRequeset();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        return data; 
+    }
+}
+
+export interface IGetUserProfileApiRequeset {
+}
+
+export class ResponseOfEditUserProfileApiResponse implements IResponseOfEditUserProfileApiResponse {
+    data?: EditUserProfileApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfEditUserProfileApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? EditUserProfileApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfEditUserProfileApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfEditUserProfileApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfEditUserProfileApiResponse {
+    data?: EditUserProfileApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class EditUserProfileApiResponse implements IEditUserProfileApiResponse {
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    timeZone?: string | undefined;
+    gender!: Gender;
+    address?: UserAddressModel | undefined;
+    wishListCount!: number;
+    followersCount!: number;
+    followingCount!: number;
+    favoriteStore?: FavoriteStoreModel | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+    error?: string | undefined;
+
+    constructor(data?: IEditUserProfileApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.identityId = _data["identityId"];
+            this.firstName = _data["firstName"];
+            this.lastName = _data["lastName"];
+            this.phoneNumber = _data["phoneNumber"];
+            this.email = _data["email"];
+            this.profilePic = _data["profilePic"];
+            this.dateOfBirth = _data["dateOfBirth"] ? moment(_data["dateOfBirth"].toString()) : <any>undefined;
+            this.timeZone = _data["timeZone"];
+            this.gender = _data["gender"];
+            this.address = _data["address"] ? UserAddressModel.fromJS(_data["address"]) : <any>undefined;
+            this.wishListCount = _data["wishListCount"];
+            this.followersCount = _data["followersCount"];
+            this.followingCount = _data["followingCount"];
+            this.favoriteStore = _data["favoriteStore"] ? FavoriteStoreModel.fromJS(_data["favoriteStore"]) : <any>undefined;
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+            this.error = _data["error"];
+        }
+    }
+
+    static fromJS(data: any): EditUserProfileApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new EditUserProfileApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["identityId"] = this.identityId;
+        data["firstName"] = this.firstName;
+        data["lastName"] = this.lastName;
+        data["phoneNumber"] = this.phoneNumber;
+        data["email"] = this.email;
+        data["profilePic"] = this.profilePic;
+        data["dateOfBirth"] = this.dateOfBirth ? this.dateOfBirth.toISOString() : <any>undefined;
+        data["timeZone"] = this.timeZone;
+        data["gender"] = this.gender;
+        data["address"] = this.address ? this.address.toJSON() : <any>undefined;
+        data["wishListCount"] = this.wishListCount;
+        data["followersCount"] = this.followersCount;
+        data["followingCount"] = this.followingCount;
+        data["favoriteStore"] = this.favoriteStore ? this.favoriteStore.toJSON() : <any>undefined;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        data["error"] = this.error;
+        return data; 
+    }
+}
+
+export interface IEditUserProfileApiResponse {
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    timeZone?: string | undefined;
+    gender: Gender;
+    address?: UserAddressModel | undefined;
+    wishListCount: number;
+    followersCount: number;
+    followingCount: number;
+    favoriteStore?: FavoriteStoreModel | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+    error?: string | undefined;
+}
+
+export class PagedResponseOfListOfSearchUserProfileApiResponse implements IPagedResponseOfListOfSearchUserProfileApiResponse {
+    data?: SearchUserProfileApiResponse[][] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfListOfSearchUserProfileApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(item);
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfListOfSearchUserProfileApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfListOfSearchUserProfileApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item);
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfListOfSearchUserProfileApiResponse {
+    data?: SearchUserProfileApiResponse[][] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class SearchUserProfileApiResponse implements ISearchUserProfileApiResponse {
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    gender!: Gender;
+    isFollowing!: boolean;
+    address?: UserAddressModel | undefined;
+
+    constructor(data?: ISearchUserProfileApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.identityId = _data["identityId"];
+            this.firstName = _data["firstName"];
+            this.lastName = _data["lastName"];
+            this.phoneNumber = _data["phoneNumber"];
+            this.email = _data["email"];
+            this.profilePic = _data["profilePic"];
+            this.dateOfBirth = _data["dateOfBirth"] ? moment(_data["dateOfBirth"].toString()) : <any>undefined;
+            this.gender = _data["gender"];
+            this.isFollowing = _data["isFollowing"];
+            this.address = _data["address"] ? UserAddressModel.fromJS(_data["address"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): SearchUserProfileApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SearchUserProfileApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["identityId"] = this.identityId;
+        data["firstName"] = this.firstName;
+        data["lastName"] = this.lastName;
+        data["phoneNumber"] = this.phoneNumber;
+        data["email"] = this.email;
+        data["profilePic"] = this.profilePic;
+        data["dateOfBirth"] = this.dateOfBirth ? this.dateOfBirth.toISOString() : <any>undefined;
+        data["gender"] = this.gender;
+        data["isFollowing"] = this.isFollowing;
+        data["address"] = this.address ? this.address.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface ISearchUserProfileApiResponse {
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    gender: Gender;
+    isFollowing: boolean;
+    address?: UserAddressModel | undefined;
+}
+
+export class ResponseOfSetFollowApiResponse implements IResponseOfSetFollowApiResponse {
+    data?: SetFollowApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfSetFollowApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? SetFollowApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfSetFollowApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfSetFollowApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfSetFollowApiResponse {
+    data?: SetFollowApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class SetFollowApiResponse implements ISetFollowApiResponse {
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    gender!: Gender;
+    isFollowing!: boolean;
+    address?: UserAddressModel | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+    error?: string | undefined;
+
+    constructor(data?: ISetFollowApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.identityId = _data["identityId"];
+            this.firstName = _data["firstName"];
+            this.lastName = _data["lastName"];
+            this.phoneNumber = _data["phoneNumber"];
+            this.email = _data["email"];
+            this.profilePic = _data["profilePic"];
+            this.dateOfBirth = _data["dateOfBirth"] ? moment(_data["dateOfBirth"].toString()) : <any>undefined;
+            this.gender = _data["gender"];
+            this.isFollowing = _data["isFollowing"];
+            this.address = _data["address"] ? UserAddressModel.fromJS(_data["address"]) : <any>undefined;
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+            this.error = _data["error"];
+        }
+    }
+
+    static fromJS(data: any): SetFollowApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SetFollowApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["identityId"] = this.identityId;
+        data["firstName"] = this.firstName;
+        data["lastName"] = this.lastName;
+        data["phoneNumber"] = this.phoneNumber;
+        data["email"] = this.email;
+        data["profilePic"] = this.profilePic;
+        data["dateOfBirth"] = this.dateOfBirth ? this.dateOfBirth.toISOString() : <any>undefined;
+        data["gender"] = this.gender;
+        data["isFollowing"] = this.isFollowing;
+        data["address"] = this.address ? this.address.toJSON() : <any>undefined;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        data["error"] = this.error;
+        return data; 
+    }
+}
+
+export interface ISetFollowApiResponse {
+    identityId?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+    profilePic?: string | undefined;
+    dateOfBirth?: moment.Moment | undefined;
+    gender: Gender;
+    isFollowing: boolean;
+    address?: UserAddressModel | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+    error?: string | undefined;
+}
+
+export class PagedResponseOfListOfGetFollowApiResponse implements IPagedResponseOfListOfGetFollowApiResponse {
+    data?: GetFollowApiResponse[][] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfListOfGetFollowApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(item);
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfListOfGetFollowApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfListOfGetFollowApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item);
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfListOfGetFollowApiResponse {
+    data?: GetFollowApiResponse[][] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class GetFollowApiResponse implements IGetFollowApiResponse {
+    userIdOrStoreId?: string | undefined;
+    userFirstNameOrStoreName?: string | undefined;
+    userLastName?: string | undefined;
+    storeDescription?: string | undefined;
+    userPhoneOrStorePhone?: string | undefined;
+    userEmailOrStoreEmail?: string | undefined;
+    storeLogoType?: string | undefined;
+    userProfilePicOrStoreLogo?: string | undefined;
+    userDateOfBirth?: moment.Moment | undefined;
+    userGender!: Gender;
+    userFollowTypeStoreFollowType!: FollowType;
+    userIsFollowOrStoreIsFollow!: boolean;
+    userAddressOrStoreAddress?: UserAddressModel | undefined;
+    storeQrImage?: string | undefined;
+    storePdfId?: string | undefined;
+    storeAbn?: string | undefined;
+    storeIsActive!: boolean;
+    returnObjectType!: FollowReturnObjectType;
+
+    constructor(data?: IGetFollowApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userIdOrStoreId = _data["userIdOrStoreId"];
+            this.userFirstNameOrStoreName = _data["userFirstNameOrStoreName"];
+            this.userLastName = _data["userLastName"];
+            this.storeDescription = _data["storeDescription"];
+            this.userPhoneOrStorePhone = _data["userPhoneOrStorePhone"];
+            this.userEmailOrStoreEmail = _data["userEmailOrStoreEmail"];
+            this.storeLogoType = _data["storeLogoType"];
+            this.userProfilePicOrStoreLogo = _data["userProfilePicOrStoreLogo"];
+            this.userDateOfBirth = _data["userDateOfBirth"] ? moment(_data["userDateOfBirth"].toString()) : <any>undefined;
+            this.userGender = _data["userGender"];
+            this.userFollowTypeStoreFollowType = _data["userFollowTypeStoreFollowType"];
+            this.userIsFollowOrStoreIsFollow = _data["userIsFollowOrStoreIsFollow"];
+            this.userAddressOrStoreAddress = _data["userAddressOrStoreAddress"] ? UserAddressModel.fromJS(_data["userAddressOrStoreAddress"]) : <any>undefined;
+            this.storeQrImage = _data["storeQrImage"];
+            this.storePdfId = _data["storePdfId"];
+            this.storeAbn = _data["storeAbn"];
+            this.storeIsActive = _data["storeIsActive"];
+            this.returnObjectType = _data["returnObjectType"];
+        }
+    }
+
+    static fromJS(data: any): GetFollowApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetFollowApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userIdOrStoreId"] = this.userIdOrStoreId;
+        data["userFirstNameOrStoreName"] = this.userFirstNameOrStoreName;
+        data["userLastName"] = this.userLastName;
+        data["storeDescription"] = this.storeDescription;
+        data["userPhoneOrStorePhone"] = this.userPhoneOrStorePhone;
+        data["userEmailOrStoreEmail"] = this.userEmailOrStoreEmail;
+        data["storeLogoType"] = this.storeLogoType;
+        data["userProfilePicOrStoreLogo"] = this.userProfilePicOrStoreLogo;
+        data["userDateOfBirth"] = this.userDateOfBirth ? this.userDateOfBirth.toISOString() : <any>undefined;
+        data["userGender"] = this.userGender;
+        data["userFollowTypeStoreFollowType"] = this.userFollowTypeStoreFollowType;
+        data["userIsFollowOrStoreIsFollow"] = this.userIsFollowOrStoreIsFollow;
+        data["userAddressOrStoreAddress"] = this.userAddressOrStoreAddress ? this.userAddressOrStoreAddress.toJSON() : <any>undefined;
+        data["storeQrImage"] = this.storeQrImage;
+        data["storePdfId"] = this.storePdfId;
+        data["storeAbn"] = this.storeAbn;
+        data["storeIsActive"] = this.storeIsActive;
+        data["returnObjectType"] = this.returnObjectType;
+        return data; 
+    }
+}
+
+export interface IGetFollowApiResponse {
+    userIdOrStoreId?: string | undefined;
+    userFirstNameOrStoreName?: string | undefined;
+    userLastName?: string | undefined;
+    storeDescription?: string | undefined;
+    userPhoneOrStorePhone?: string | undefined;
+    userEmailOrStoreEmail?: string | undefined;
+    storeLogoType?: string | undefined;
+    userProfilePicOrStoreLogo?: string | undefined;
+    userDateOfBirth?: moment.Moment | undefined;
+    userGender: Gender;
+    userFollowTypeStoreFollowType: FollowType;
+    userIsFollowOrStoreIsFollow: boolean;
+    userAddressOrStoreAddress?: UserAddressModel | undefined;
+    storeQrImage?: string | undefined;
+    storePdfId?: string | undefined;
+    storeAbn?: string | undefined;
+    storeIsActive: boolean;
+    returnObjectType: FollowReturnObjectType;
+}
+
+export enum FollowType {
+    Follower = 0,
+    Following = 1,
+}
+
+export enum FollowReturnObjectType {
+    User = 1,
+    Store = 2,
+}
+
+export class ResponseOfUpdateNotificationResponse implements IResponseOfUpdateNotificationResponse {
+    data?: UpdateNotificationResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfUpdateNotificationResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? UpdateNotificationResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfUpdateNotificationResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfUpdateNotificationResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfUpdateNotificationResponse {
+    data?: UpdateNotificationResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class UpdateNotificationResponse implements IUpdateNotificationResponse {
+    isSuccess!: boolean;
+
+    constructor(data?: IUpdateNotificationResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+        }
+    }
+
+    static fromJS(data: any): UpdateNotificationResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateNotificationResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        return data; 
+    }
+}
+
+export interface IUpdateNotificationResponse {
+    isSuccess: boolean;
+}
+
+export class UpdateNotificationRequest implements IUpdateNotificationRequest {
+    identityId?: string | undefined;
+    deviceId?: string | undefined;
+    pushToken?: string | undefined;
+    deviceType!: number;
+
+    constructor(data?: IUpdateNotificationRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.identityId = _data["identityId"];
+            this.deviceId = _data["deviceId"];
+            this.pushToken = _data["pushToken"];
+            this.deviceType = _data["deviceType"];
+        }
+    }
+
+    static fromJS(data: any): UpdateNotificationRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateNotificationRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["identityId"] = this.identityId;
+        data["deviceId"] = this.deviceId;
+        data["pushToken"] = this.pushToken;
+        data["deviceType"] = this.deviceType;
+        return data; 
+    }
+}
+
+export interface IUpdateNotificationRequest {
+    identityId?: string | undefined;
+    deviceId?: string | undefined;
+    pushToken?: string | undefined;
+    deviceType: number;
+}
+
+export class ResponseOfRegisterPostApiResponse implements IResponseOfRegisterPostApiResponse {
+    data?: RegisterPostApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfRegisterPostApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? RegisterPostApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfRegisterPostApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfRegisterPostApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfRegisterPostApiResponse {
+    data?: RegisterPostApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class RegisterPostApiResponse implements IRegisterPostApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+
+    constructor(data?: IRegisterPostApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.token = _data["token"];
+            this.refreshToken = _data["refreshToken"];
+            this.error = _data["error"];
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+        }
+    }
+
+    static fromJS(data: any): RegisterPostApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new RegisterPostApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["token"] = this.token;
+        data["refreshToken"] = this.refreshToken;
+        data["error"] = this.error;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        return data; 
+    }
+}
+
+export interface IRegisterPostApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+}
+
+export enum ApplicationType {
+    StoreApp = 1,
+    ShopperApp = 2,
+}
+
+export class ResponseOfGenerateOTPApiResponse implements IResponseOfGenerateOTPApiResponse {
+    data?: GenerateOTPApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfGenerateOTPApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? GenerateOTPApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfGenerateOTPApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfGenerateOTPApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfGenerateOTPApiResponse {
+    data?: GenerateOTPApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class GenerateOTPApiResponse implements IGenerateOTPApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+
+    constructor(data?: IGenerateOTPApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.token = _data["token"];
+            this.refreshToken = _data["refreshToken"];
+            this.error = _data["error"];
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+        }
+    }
+
+    static fromJS(data: any): GenerateOTPApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GenerateOTPApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["token"] = this.token;
+        data["refreshToken"] = this.refreshToken;
+        data["error"] = this.error;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        return data; 
+    }
+}
+
+export interface IGenerateOTPApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+}
+
+export class ResponseOfValidateOTPApiResponse implements IResponseOfValidateOTPApiResponse {
+    data?: ValidateOTPApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfValidateOTPApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? ValidateOTPApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfValidateOTPApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfValidateOTPApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfValidateOTPApiResponse {
+    data?: ValidateOTPApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class ValidateOTPApiResponse implements IValidateOTPApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+    error?: string | undefined;
+
+    constructor(data?: IValidateOTPApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.token = _data["token"];
+            this.refreshToken = _data["refreshToken"];
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+            this.error = _data["error"];
+        }
+    }
+
+    static fromJS(data: any): ValidateOTPApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ValidateOTPApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["token"] = this.token;
+        data["refreshToken"] = this.refreshToken;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        data["error"] = this.error;
+        return data; 
+    }
+}
+
+export interface IValidateOTPApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+    error?: string | undefined;
+}
+
+export class ResponseOfSignInApiResponse implements IResponseOfSignInApiResponse {
+    data?: SignInApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfSignInApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? SignInApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfSignInApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfSignInApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfSignInApiResponse {
+    data?: SignInApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class SignInApiResponse implements ISignInApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+
+    constructor(data?: ISignInApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.token = _data["token"];
+            this.refreshToken = _data["refreshToken"];
+            this.error = _data["error"];
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+        }
+    }
+
+    static fromJS(data: any): SignInApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SignInApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["token"] = this.token;
+        data["refreshToken"] = this.refreshToken;
+        data["error"] = this.error;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        return data; 
+    }
+}
+
+export interface ISignInApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+}
+
+export class ResponseOfForgotPasswordApiResponse implements IResponseOfForgotPasswordApiResponse {
+    data?: ForgotPasswordApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfForgotPasswordApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? ForgotPasswordApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfForgotPasswordApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfForgotPasswordApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfForgotPasswordApiResponse {
+    data?: ForgotPasswordApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class ForgotPasswordApiResponse implements IForgotPasswordApiResponse {
+    forgotUserId?: string | undefined;
+    forgotCode?: string | undefined;
+    forgotName?: string | undefined;
+    error?: string | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+
+    constructor(data?: IForgotPasswordApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.forgotUserId = _data["forgotUserId"];
+            this.forgotCode = _data["forgotCode"];
+            this.forgotName = _data["forgotName"];
+            this.error = _data["error"];
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+        }
+    }
+
+    static fromJS(data: any): ForgotPasswordApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ForgotPasswordApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["forgotUserId"] = this.forgotUserId;
+        data["forgotCode"] = this.forgotCode;
+        data["forgotName"] = this.forgotName;
+        data["error"] = this.error;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        return data; 
+    }
+}
+
+export interface IForgotPasswordApiResponse {
+    forgotUserId?: string | undefined;
+    forgotCode?: string | undefined;
+    forgotName?: string | undefined;
+    error?: string | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+}
+
+export class ResponseOfChangePasswordApiResponse implements IResponseOfChangePasswordApiResponse {
+    data?: ChangePasswordApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfChangePasswordApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? ChangePasswordApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfChangePasswordApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfChangePasswordApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfChangePasswordApiResponse {
+    data?: ChangePasswordApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class ChangePasswordApiResponse implements IChangePasswordApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+
+    constructor(data?: IChangePasswordApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.token = _data["token"];
+            this.refreshToken = _data["refreshToken"];
+            this.error = _data["error"];
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+        }
+    }
+
+    static fromJS(data: any): ChangePasswordApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ChangePasswordApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["token"] = this.token;
+        data["refreshToken"] = this.refreshToken;
+        data["error"] = this.error;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        return data; 
+    }
+}
+
+export interface IChangePasswordApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+}
+
+export class ResponseOfResetPasswordApiResponse implements IResponseOfResetPasswordApiResponse {
+    data?: ResetPasswordApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfResetPasswordApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? ResetPasswordApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfResetPasswordApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfResetPasswordApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfResetPasswordApiResponse {
+    data?: ResetPasswordApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class ResetPasswordApiResponse implements IResetPasswordApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+
+    constructor(data?: IResetPasswordApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.token = _data["token"];
+            this.refreshToken = _data["refreshToken"];
+            this.error = _data["error"];
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+        }
+    }
+
+    static fromJS(data: any): ResetPasswordApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResetPasswordApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["token"] = this.token;
+        data["refreshToken"] = this.refreshToken;
+        data["error"] = this.error;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        return data; 
+    }
+}
+
+export interface IResetPasswordApiResponse {
+    token?: string | undefined;
+    refreshToken?: string | undefined;
+    error?: string | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+}
+
+export class ResponseOfSignOutApiResponse implements IResponseOfSignOutApiResponse {
+    data?: SignOutApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfSignOutApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? SignOutApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfSignOutApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfSignOutApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfSignOutApiResponse {
+    data?: SignOutApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class SignOutApiResponse implements ISignOutApiResponse {
+    error?: string | undefined;
+    statusCode!: number;
+    isSuccess!: boolean;
+
+    constructor(data?: ISignOutApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.error = _data["error"];
+            this.statusCode = _data["statusCode"];
+            this.isSuccess = _data["isSuccess"];
+        }
+    }
+
+    static fromJS(data: any): SignOutApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new SignOutApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["error"] = this.error;
+        data["statusCode"] = this.statusCode;
+        data["isSuccess"] = this.isSuccess;
+        return data; 
+    }
+}
+
+export interface ISignOutApiResponse {
+    error?: string | undefined;
+    statusCode: number;
+    isSuccess: boolean;
+}
+
+export class SignOutApiRequest implements ISignOutApiRequest {
+
+    constructor(data?: ISignOutApiRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+    }
+
+    static fromJS(data: any): SignOutApiRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new SignOutApiRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        return data; 
+    }
+}
+
+export interface ISignOutApiRequest {
+}
+
+export class ResponseOfIsExistsUserApiResponse implements IResponseOfIsExistsUserApiResponse {
+    data?: IsExistsUserApiResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfIsExistsUserApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? IsExistsUserApiResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfIsExistsUserApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfIsExistsUserApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfIsExistsUserApiResponse {
+    data?: IsExistsUserApiResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class IsExistsUserApiResponse implements IIsExistsUserApiResponse {
+    id?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+
+    constructor(data?: IIsExistsUserApiResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.firstName = _data["firstName"];
+            this.lastName = _data["lastName"];
+            this.phoneNumber = _data["phoneNumber"];
+            this.email = _data["email"];
+        }
+    }
+
+    static fromJS(data: any): IsExistsUserApiResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new IsExistsUserApiResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["firstName"] = this.firstName;
+        data["lastName"] = this.lastName;
+        data["phoneNumber"] = this.phoneNumber;
+        data["email"] = this.email;
+        return data; 
+    }
+}
+
+export interface IIsExistsUserApiResponse {
+    id?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    phoneNumber?: string | undefined;
+    email?: string | undefined;
+}
+
+export class PagedResponseOfGetWishListAPIResponse implements IPagedResponseOfGetWishListAPIResponse {
+    data?: GetWishListAPIResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+
+    constructor(data?: IPagedResponseOfGetWishListAPIResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(GetWishListAPIResponse.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.pageSize = _data["pageSize"];
+            this.totalCount = _data["totalCount"];
+            this._links = _data["_links"] ? Links.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfGetWishListAPIResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfGetWishListAPIResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["pageSize"] = this.pageSize;
+        data["totalCount"] = this.totalCount;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IPagedResponseOfGetWishListAPIResponse {
+    data?: GetWishListAPIResponse[] | undefined;
+    pageNumber?: number | undefined;
+    pageSize?: number | undefined;
+    totalCount?: number | undefined;
+    _links?: Links | undefined;
+}
+
+export class GetWishListAPIResponse implements IGetWishListAPIResponse {
+    id!: string;
+    userProfileId!: number;
+
+    constructor(data?: IGetWishListAPIResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.userProfileId = _data["userProfileId"];
+        }
+    }
+
+    static fromJS(data: any): GetWishListAPIResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new GetWishListAPIResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["userProfileId"] = this.userProfileId;
+        return data; 
+    }
+}
+
+export interface IGetWishListAPIResponse {
+    id: string;
+    userProfileId: number;
+}
+
+export class ResponseOfCreateWishListAPIResponse implements IResponseOfCreateWishListAPIResponse {
+    data?: CreateWishListAPIResponse | undefined;
+    _links?: LinkBase | undefined;
+
+    constructor(data?: IResponseOfCreateWishListAPIResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.data = _data["data"] ? CreateWishListAPIResponse.fromJS(_data["data"]) : <any>undefined;
+            this._links = _data["_links"] ? LinkBase.fromJS(_data["_links"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): ResponseOfCreateWishListAPIResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResponseOfCreateWishListAPIResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["data"] = this.data ? this.data.toJSON() : <any>undefined;
+        data["_links"] = this._links ? this._links.toJSON() : <any>undefined;
+        return data; 
+    }
+}
+
+export interface IResponseOfCreateWishListAPIResponse {
+    data?: CreateWishListAPIResponse | undefined;
+    _links?: LinkBase | undefined;
+}
+
+export class CreateWishListAPIResponse implements ICreateWishListAPIResponse {
+    dealId!: string;
+    id!: string;
+    userProfileId!: number;
+
+    constructor(data?: ICreateWishListAPIResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.dealId = _data["dealId"];
+            this.id = _data["id"];
+            this.userProfileId = _data["userProfileId"];
+        }
+    }
+
+    static fromJS(data: any): CreateWishListAPIResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateWishListAPIResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["dealId"] = this.dealId;
+        data["id"] = this.id;
+        data["userProfileId"] = this.userProfileId;
+        return data; 
+    }
+}
+
+export interface ICreateWishListAPIResponse {
+    dealId: string;
+    id: string;
+    userProfileId: number;
 }
 
 export class SwaggerResponse<TResult> {
-  status: number;
-  headers: { [key: string]: any };
-  result: TResult;
+    status: number;
+    headers: { [key: string]: any; };
+    result: TResult;
 
-  constructor(
-    status: number,
-    headers: { [key: string]: any },
-    result: TResult
-  ) {
-    this.status = status;
-    this.headers = headers;
-    this.result = result;
-  }
+    constructor(status: number, headers: { [key: string]: any; }, result: TResult)
+    {
+        this.status = status;
+        this.headers = headers;
+        this.result = result;
+    }
+}
+
+export interface FileParameter {
+    data: any;
+    fileName: string;
 }
 
 export interface FileResponse {
-  data: Blob;
-  status: number;
-  fileName?: string;
-  headers?: { [name: string]: any };
+    data: Blob;
+    status: number;
+    fileName?: string;
+    headers?: { [name: string]: any };
 }
 
 export class ApiException extends Error {
-  message: string;
-  status: number;
-  response: string;
-  headers: { [key: string]: any };
-  result: any;
+    message: string;
+    status: number;
+    response: string;
+    headers: { [key: string]: any; };
+    result: any;
 
-  constructor(
-    message: string,
-    status: number,
-    response: string,
-    headers: { [key: string]: any },
-    result: any
-  ) {
-    super();
+    constructor(message: string, status: number, response: string, headers: { [key: string]: any; }, result: any) {
+        super();
 
-    this.message = message;
-    this.status = status;
-    this.response = response;
-    this.headers = headers;
-    this.result = result;
-  }
+        this.message = message;
+        this.status = status;
+        this.response = response;
+        this.headers = headers;
+        this.result = result;
+    }
 
-  protected isApiException = true;
+    protected isApiException = true;
 
-  static isApiException(obj: any): obj is ApiException {
-    return obj.isApiException === true;
-  }
+    static isApiException(obj: any): obj is ApiException {
+        return obj.isApiException === true;
+    }
 }
 
-function throwException(
-  message: string,
-  status: number,
-  response: string,
-  headers: { [key: string]: any },
-  result?: any
-): any {
-  if (result !== null && result !== undefined) throw result;
-  else throw new ApiException(message, status, response, headers, null);
+function throwException(message: string, status: number, response: string, headers: { [key: string]: any; }, result?: any): any {
+    if (result !== null && result !== undefined)
+        throw result;
+    else
+        throw new ApiException(message, status, response, headers, null);
 }
 
 function isAxiosError(obj: any | undefined): obj is AxiosError {
-  return obj && obj.isAxiosError === true;
+    return obj && obj.isAxiosError === true;
 }
 
 /**
@@ -7480,25 +12149,17 @@ function isAxiosError(obj: any | undefined): obj is AxiosError {
  * The config is provided to the API client at initialization time.
  * API clients inherit from #AuthorizedApiBase and provide the config.
  */
-/*
- *
- * *
- */
 
 export class IConfig {
-  /**
-   * Returns a valid value for the Authorization header.
-   * Used to dynamically inject the current auth header.
-   */
-  getAuthorization() {
-    //return `Brearer ${TestService.Token()}`;
-    return `Bearer ${authToken}`;
-  }
-  getTenantId() {
-    //return `Brearer ${TestService.Token()}`;
-    return `${tenantId}`;
-  }
-  baseUrl() {
-    return "https://api.restaurant-qa-two.emp-host.com";
-  }
+    /**
+     * Returns a valid value for the Authorization header.
+     * Used to dynamically inject the current auth header.
+     */
+    getAuthorization() {
+        //return `Brearer ${TestService.Token()}`;
+        return `Bearer ${authToken}`;
+    };
+    baseUrl(){
+        return "https://api.yula-qa.emp-host.com";
+    };
 }

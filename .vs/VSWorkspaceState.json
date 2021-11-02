@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\shared",
+    "\\src\\shared\\api",
+    "\\src\\shared\\components",
+    "\\src\\shared\\styles"
+  ],
+  "SelectedNode": "\\src\\App.tsx",
+  "PreviewInSolutionExplorer": false
+}
